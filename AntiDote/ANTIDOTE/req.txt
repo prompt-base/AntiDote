@@ -1,0 +1,13 @@
+streamlit
+streamlit-webrtc
+mediapipe
+av
+numpy
+scikit-learn
+pillow
+
+
+
+
+
+
