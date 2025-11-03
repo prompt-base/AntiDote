@@ -1,228 +1,378 @@
-# ANTIDOTE/pages/2_ ASL Sign.py
-import queue
-from collections import deque, defaultdict
-
-import numpy as np
+# ANTIDOTE/pages/Signalink.py
+# --------------------------------------------------
+# SIGNALINK – Sign / Gesture Communication Module
+# Inspired by your ALZY style
+# --------------------------------------------------
+import os
+from pathlib import Path
+import random
+import json
+import datetime
 import streamlit as st
-from streamlit_webrtc import webrtc_streamer, WebRtcMode, RTCConfiguration, VideoProcessorBase
-import mediapipe as mp
-from sklearn.neighbors import KNeighborsClassifier
-from PIL import Image, ImageDraw, ImageFont
+
+# --------------------------------------------------
+# 1. PATHS / ASSETS
+# --------------------------------------------------
+# your project root (same as we used in alzy)
+PROJECT_ROOT = Path(r"C:\Users\Anurag\PycharmProjects\AntiDote")
+SIGNALINK_ASSETS = PROJECT_ROOT / "signalink_assets"  # put images here
+
+# small demo sign dataset (you can expand later)
+SIGN_DATA = [
+    {
+        "word": "Hello",
+        "category": "Basic",
+        "image": str(SIGNALINK_ASSETS / "hello.png"),
+        "hint": "Hand up, small wave."
+    },
+    {
+        "word": "Thank you",
+        "category": "Basic",
+        "image": str(SIGNALINK_ASSETS / "thankyou.png"),
+        "hint": "From chin outward."
+    },
+    {
+        "word": "Sorry",
+        "category": "Basic",
+        "image": str(SIGNALINK_ASSETS / "sorry.png"),
+        "hint": "Closed fist over chest."
+    },
+    {
+        "word": "Eat",
+        "category": "Daily",
+        "image": str(SIGNALINK_ASSETS / "eat.png"),
+        "hint": "Fingers to mouth."
+    },
+    {
+        "word": "Help",
+        "category": "Daily",
+        "image": str(SIGNALINK_ASSETS / "help.png"),
+        "hint": "Thumb-up on palm."
+    },
+    {
+        "word": "Mother",
+        "category": "People",
+        "image": str(SIGNALINK_ASSETS / "mother.png"),
+        "hint": "Thumb to chin."
+    },
+    {
+        "word": "Father",
+        "category": "People",
+        "image": str(SIGNALINK_ASSETS / "father.png"),
+        "hint": "Thumb to forehead."
+    },
+]
+
+CATEGORIES = sorted(list({s["category"] for s in SIGN_DATA}))
 
 
-st.title("🤟 ANTIDOTE — ASL Sign (MediaPipe + k-NN, no OpenCV)")
+# --------------------------------------------------
+# 2. GLOBAL STYLES
+# --------------------------------------------------
+st.set_page_config(page_title="Signalink", page_icon="🤟", layout="wide")
 
-def extract_xy_features(hand_landmarks, frame_w, frame_h):
-    """42-D: (x,y) of 21 points, centered on wrist & scale-normalized."""
-    xs = [lm.x * frame_w for lm in hand_landmarks.landmark]
-    ys = [lm.y * frame_h for lm in hand_landmarks.landmark]
-    xs, ys = np.array(xs), np.array(ys)
-    x0, y0 = xs[0], ys[0]
-    xs -= x0; ys -= y0
-    scale = float(np.max(np.sqrt(xs**2 + ys**2)) + 1e-6)
-    xs /= scale; ys /= scale
-    return np.stack([xs, ys], axis=1).reshape(-1).astype("float32")
+st.markdown(
+    """
+    <style>
+    .stApp {
+      background: radial-gradient(circle at top, #0f172a 0%, #020617 100%);
+      color: #fff;
+    }
+    h1,h2,h3,h4 {
+      color: #fff !important;
+    }
+    .big-btn {
+      background: linear-gradient(120deg, #38bdf8 0%, #6366f1 80%);
+      border: none;
+      color: #fff;
+      padding: 18px 20px;
+      border-radius: 18px;
+      font-size: 1.4rem;
+      font-weight: 700;
+      width: 100%;
+      box-shadow: 0 12px 30px rgba(99,102,241,0.3);
+      cursor: pointer;
+    }
+    .sign-card {
+      background: rgba(15,23,42,0.35);
+      border: 1px solid rgba(255,255,255,0.05);
+      border-radius: 16px;
+      padding: 10px 12px;
+      margin-bottom: 12px;
+    }
+    .cat-pill {
+      display:inline-block;
+      background: rgba(99,102,241,0.12);
+      border: 1px solid rgba(99,102,241,0.25);
+      padding: 3px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      margin-right: 6px;
+      margin-bottom: 6px;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
-def pil_draw_text(draw, text, x, y, color=(0, 200, 0)):
-    try:
-        font = ImageFont.load_default()
-    except Exception:
-        font = None
-    draw.text((x, y), text, fill=color, font=font)
 
-def pil_draw_landmarks(draw, hand_landmarks, w, h,
-                       color_pts=(30,220,30), color_conn=(100,180,255)):
-    pts = [(int(lm.x * w), int(lm.y * h)) for lm in hand_landmarks.landmark]
-    for i, j in mp.solutions.hands.HAND_CONNECTIONS:
-        draw.line([pts[i], pts[j]], fill=color_conn, width=3)
-    for (x, y) in pts:
-        r = 4
-        draw.ellipse((x-r, y-r, x+r, y+r), outline=color_pts, width=2)
+# --------------------------------------------------
+# 3. SESSION STATE
+# --------------------------------------------------
+if "signalink_started" not in st.session_state:
+    st.session_state.signalink_started = False
 
-class ASLProcessor(VideoProcessorBase):
-    def __init__(self):
-        self.hands = mp.solutions.hands.Hands(
-            max_num_hands=1, min_detection_confidence=0.7, min_tracking_confidence=0.6
+if "signalink_progress" not in st.session_state:
+    # store learned words and quiz scores
+    st.session_state.signalink_progress = {
+        "learned": [],
+        "quiz_scores": []
+    }
+
+if "signalink_quiz_q" not in st.session_state:
+    st.session_state.signalink_quiz_q = None  # current quiz question
+
+
+# --------------------------------------------------
+# 4. LANDING PAGE
+# --------------------------------------------------
+if not st.session_state.signalink_started:
+    col1, col2 = st.columns([2, 1])
+    with col1:
+        st.markdown("<h1>🤟 SIGNALINK</h1>", unsafe_allow_html=True)
+        st.write("Sign / Gesture Communication helper inside ANTIDOTE.")
+        st.write("Learn quick signs for patients, caregivers, and non-verbal users.")
+        st.write("Tap **Start** to begin.")
+    with col2:
+        st.image(
+            "https://i.pinimg.com/originals/e9/f7/bf/e9f7bf6cd7b5f1f6b954ed7be35d8aac.gif",
+            use_container_width=True,
         )
-        self.samples_X, self.samples_y = [], []
-        self.class_counts = defaultdict(int)
-        self.clf, self.model_ready = None, False
 
-        self.collecting, self.collect_label, self.collect_frames_left = False, None, 0
+    start = st.button("Start Signalink", use_container_width=True, key="start_signalink")
+    if start:
+        st.session_state.signalink_started = True
+        st.rerun()
+    st.stop()   # don't render rest
 
-        self.pred_buffer = deque(maxlen=8)
-        self.current_pred, self.current_conf = None, 0.0
 
-        self.compose_enabled, self.compose_min_stable = True, 6
-        self.text_out, self._last_committed_pred = "", None
+# --------------------------------------------------
+# 5. MAIN SIGNALINK APP (after Start)
+# --------------------------------------------------
+st.title("🤟 SIGNALINK")
 
-        self.info_queue = queue.Queue()
+tab_learn, tab_practice, tab_quiz, tab_voice, tab_progress = st.tabs(
+    ["📚 Learn Signs", "🧪 Practice", "📝 Quiz", "🗣 Voice → Sign", "📊 Progress"]
+)
 
-    # --- dataset/model ---
-    def set_collect(self, label, n_frames):
-        self.collecting, self.collect_label, self.collect_frames_left = True, str(label), int(n_frames)
+# --------------------------------------------------
+# 📚 LEARN SIGNS
+# --------------------------------------------------
+with tab_learn:
+    st.subheader("📚 Learn Signs")
+    st.caption("Select a category and tap on a sign to view it.")
 
-    def stop_collect(self):
-        self.collecting, self.collect_label, self.collect_frames_left = False, None, 0
+    cat = st.selectbox("Choose a category", ["All"] + CATEGORIES)
 
-    def fit_model(self, k=5):
-        if len(self.samples_y) >= 2 and len(set(self.samples_y)) >= 2:
-            self.clf = KNeighborsClassifier(n_neighbors=int(k), weights="distance", metric="euclidean")
-            self.clf.fit(np.array(self.samples_X), np.array(self.samples_y))
-            self.model_ready = True
-            self.info_queue.put(("model", "trained"))
-        else:
-            self.model_ready = False
-            self.info_queue.put(("model", "not_enough_data"))
+    filtered = SIGN_DATA if cat == "All" else [s for s in SIGN_DATA if s["category"] == cat]
 
-    # --- compose text ---
-    def set_compose(self, enabled=True, min_stable=6):
-        self.compose_enabled, self.compose_min_stable = bool(enabled), int(min_stable)
-
-    def clear_text(self):
-        self.text_out, self._last_committed_pred = "", None
-
-    # --- video callback ---
-    def recv(self, frame):
-        rgb = frame.to_ndarray(format="rgb24")
-        h, w, _ = rgb.shape
-        result = self.hands.process(rgb)
-
-        pil_img = Image.fromarray(rgb)
-        draw = ImageDraw.Draw(pil_img)
-
-        features, bbox = None, None
-
-        if result.multi_hand_landmarks:
-            hand = result.multi_hand_landmarks[0]
-            pil_draw_landmarks(draw, hand, w, h)
-
-            xs = [lm.x for lm in hand.landmark]
-            ys = [lm.y for lm in hand.landmark]
-            x1, x2 = int(min(xs) * w), int(max(xs) * w)
-            y1, y2 = int(min(ys) * h), int(max(ys) * h)
-            bbox = (x1, y1, x2, y2)
-            draw.rectangle([x1, y1, x2, y2], outline=(100, 100, 255), width=2)
-
-            features = extract_xy_features(hand, w, h)
-
-            if self.collecting and self.collect_frames_left > 0:
-                self.samples_X.append(features)
-                self.samples_y.append(self.collect_label)
-                self.class_counts[self.collect_label] += 1
-                self.collect_frames_left -= 1
-                pil_draw_text(draw, f"Collecting [{self.collect_label}] left: {self.collect_frames_left}",
-                              x1, max(10, y1 - 20), (255, 165, 0))
-                if self.collect_frames_left == 0:
-                    self.stop_collect()
-                    self.info_queue.put(("collect", "done"))
-
-        if self.model_ready and features is not None:
-            try:
-                proba = self.clf.predict_proba([features])[0]
-                idx = int(np.argmax(proba))
-                pred_label = self.clf.classes_[idx]
-                pred_conf = float(proba[idx])
-            except Exception:
-                pred_label = self.clf.predict([features])[0]
-                pred_conf = 1.0
-
-            self.pred_buffer.append(pred_label)
-            if len(self.pred_buffer) == self.pred_buffer.maxlen:
-                mode = max(set(self.pred_buffer), key=self.pred_buffer.count)
-                self.current_pred, self.current_conf = mode, pred_conf
-
-                if self.compose_enabled and self._last_committed_pred != self.current_pred \
-                   and self.pred_buffer.count(self.current_pred) >= self.compose_min_stable:
-                    self.text_out += str(self.current_pred)
-                    self._last_committed_pred = self.current_pred
+    cols = st.columns(3)
+    for i, sign in enumerate(filtered):
+        with cols[i % 3]:
+            st.markdown("<div class='sign-card'>", unsafe_allow_html=True)
+            # image
+            img_path = sign["image"]
+            if img_path and os.path.exists(img_path):
+                st.image(img_path, use_container_width=True)
             else:
-                self.current_pred, self.current_conf = pred_label, pred_conf
-
-            if bbox and self.current_pred:
-                x1, y1, x2, y2 = bbox
-                pil_draw_text(draw, f"Pred: {self.current_pred} ({self.current_conf:.2f})",
-                              x1, min(h - 30, y2 + 10), (0, 220, 0))
-        elif self.collecting:
-            pil_draw_text(draw, "Place your hand in the box to collect samples.", 10, 10, (0, 200, 255))
-
-        # bottom text bar
-        draw.rectangle([0, h - 50, w, h], fill=(0, 0, 0))
-        pil_draw_text(draw, self.text_out[-60:] if self.text_out else " ", 10, h - 35, (255, 255, 255))
-
-        out_rgb = np.asarray(pil_img)
-        out_bgr = out_rgb[:, :, ::-1]  # RGB->BGR (what webrtc expects)
-        return out_bgr
+                st.image("https://via.placeholder.com/300x180?text=SIGN", use_container_width=True)
+            st.markdown(f"**{sign['word']}**")
+            st.caption(f"Category: {sign['category']}")
+            st.caption(f"Hint: {sign['hint']}")
+            # mark as learned
+            if st.button(f"Mark learned", key=f"learn_{sign['word']}"):
+                if sign["word"] not in st.session_state.signalink_progress["learned"]:
+                    st.session_state.signalink_progress["learned"].append(sign["word"])
+                st.success(f"Marked {sign['word']} as learned ✅")
+            st.markdown("</div>", unsafe_allow_html=True)
 
 
-# ---------- Sidebar ----------
-with st.sidebar:
-    st.header("Settings")
-    rtc_conf = RTCConfiguration({"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]})
+# --------------------------------------------------
+# 🧪 PRACTICE
+# --------------------------------------------------
+with tab_practice:
+    st.subheader("🧪 Practice Mode")
+    st.caption("We will show you a sign. Tell us what it means.")
 
-    st.subheader("Collect")
-    label = st.text_input("Label (e.g., A, HELLO)", value="A")
-    n_frames = st.slider("Frames", 10, 200, 50, 10)
+    # choose a random sign
+    sign = random.choice(SIGN_DATA)
+    c1, c2 = st.columns([1, 1])
 
-    st.subheader("Train")
-    k = st.slider("k (neighbors)", 1, 15, 5, 1)
+    with c1:
+        if sign["image"] and os.path.exists(sign["image"]):
+            st.image(sign["image"], use_container_width=True)
+        else:
+            st.image("https://via.placeholder.com/400x220?text=SIGN", use_container_width=True)
+    with c2:
+        st.write("👇 What is this sign?")
+        # make some options
+        options = [sign["word"]]
+        # pick 2 random wrong
+        wrong = [s["word"] for s in SIGN_DATA if s["word"] != sign["word"]]
+        random.shuffle(wrong)
+        options += wrong[:2]
+        random.shuffle(options)
 
-    st.subheader("Compose")
-    compose_enabled = st.toggle("Auto-append stable prediction", True)
-    min_stable = st.slider("Stability (out of 8)", 1, 8, 6)
+        chosen = st.radio("Choose one:", options, key=f"pr_opt_{datetime.datetime.now().timestamp()}")
+        if st.button("Check"):
+            if chosen == sign["word"]:
+                st.success("✅ Correct!")
+            else:
+                st.error(f"❌ Not correct. This is **{sign['word']}**.")
+            st.info(f"Hint: {sign['hint']}")
 
-    clear_text = st.button("Clear composed text")
 
-# ---------- Main ----------
-left, right = st.columns([2, 1])
+# --------------------------------------------------
+# 📝 QUIZ
+# --------------------------------------------------
+with tab_quiz:
+    st.subheader("📝 Quiz Mode")
+    st.caption("10/10 gets you a badge 😎")
 
-with left:
-    ctx = webrtc_streamer(
-        key="asl-page",
-        mode=WebRtcMode.SENDRECV,          # <-- enum, not string
-        rtc_configuration=rtc_conf,
-        video_processor_factory=ASLProcessor,
-        media_stream_constraints={"video": True, "audio": False},
-        async_processing=True,
+    # if no current question, pick one
+    if st.session_state.signalink_quiz_q is None:
+        st.session_state.signalink_quiz_q = random.choice(SIGN_DATA)
+
+    q = st.session_state.signalink_quiz_q
+
+    c1, c2 = st.columns([1, 1])
+    with c1:
+        if q["image"] and os.path.exists(q["image"]):
+            st.image(q["image"], use_container_width=True)
+        else:
+            st.image("https://via.placeholder.com/400x220?text=SIGN", use_container_width=True)
+
+    with c2:
+        st.write("What sign is this?")
+        # make options
+        opts = [q["word"]]
+        others = [s["word"] for s in SIGN_DATA if s["word"] != q["word"]]
+        random.shuffle(others)
+        opts += others[:3]
+        random.shuffle(opts)
+
+        ans = st.radio("Select:", opts, key="quiz_ans")
+        if st.button("Submit answer"):
+            correct = (ans == q["word"])
+            if correct:
+                st.success("✅ Correct!")
+            else:
+                st.error(f"❌ Wrong. Correct answer: **{q['word']}**")
+            # record score
+            st.session_state.signalink_progress["quiz_scores"].append(
+                {
+                    "time": datetime.datetime.now().isoformat(timespec="seconds"),
+                    "word": q["word"],
+                    "correct": correct,
+                }
+            )
+            # new question
+            st.session_state.signalink_quiz_q = random.choice(SIGN_DATA)
+            st.rerun()
+
+
+# --------------------------------------------------
+# 🗣 VOICE → SIGN
+# (we'll keep this light — browser may block mic, so we show fallback)
+# --------------------------------------------------
+with tab_voice:
+    st.subheader("🗣 Voice → Sign")
+    st.caption("Say a word like 'Hello' or 'Thank you'. If browser blocks mic, type below.")
+
+    # 1) small JS button for speech (if browser supports)
+    st.markdown(
+        """
+        <button id="sig-stt-btn"
+                style="padding:6px 14px;border:none;background:#f97316;color:white;border-radius:8px;cursor:pointer;">
+          🎤 Speak
+        </button>
+        <span id="sig-stt-status" style="margin-left:6px;font-size:12px;color:#fff;"></span>
+        <script>
+        (function(){
+          const btn = document.getElementById("sig-stt-btn");
+          const stt = document.getElementById("sig-stt-status");
+          if (!btn) return;
+          btn.addEventListener("click", function(){
+            const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SR){
+              stt.innerText = "Speech not supported here. Type below.";
+              return;
+            }
+            const rec = new SR();
+            rec.lang = "en-US";
+            rec.onstart = ()=>{ stt.innerText = "Listening..."; };
+            rec.onerror = (e)=>{ stt.innerText = "Error: " + e.error; };
+            rec.onresult = (e)=>{
+              const text = e.results[0][0].transcript;
+              const u = new URL(window.location.href);
+              u.searchParams.set("say_sig", text);
+              window.location.href = u.toString();
+            };
+            rec.start();
+          });
+        })();
+        </script>
+        """,
+        unsafe_allow_html=True,
     )
 
-with right:
-    st.subheader("Live status")
+    # 2) get spoken
+    spoken_sig = st.query_params.get("say_sig")
+    if isinstance(spoken_sig, list):
+        spoken_sig = spoken_sig[0]
 
-    if ctx and ctx.state.playing and ctx.video_processor:
-        vp: ASLProcessor = ctx.video_processor
-        vp.set_compose(compose_enabled, min_stable)
-        if clear_text:
-            vp.clear_text()
+    typed = st.text_input("or type the word here", value=spoken_sig or "")
 
-        c1, c2 = st.columns(2)
-        with c1:
-            if st.button("Start collecting"):
-                vp.set_collect(label, n_frames)
-        with c2:
-            if st.button("Stop"):
-                vp.stop_collect()
-
-        if st.button("Train model"):
-            vp.fit_model(k)
-
-        # drain messages
-        try:
-            while True:
-                t, m = vp.info_queue.get_nowait()
-                if t == "model" and m == "trained":
-                    st.success("Model trained ✔️")
-                if t == "model" and m == "not_enough_data":
-                    st.warning("Need ≥ 2 different labels.")
-                if t == "collect" and m == "done":
-                    st.info("Collection finished for this label.")
-        except queue.Empty:
-            pass
-
-        st.markdown("### Samples per class")
-        if vp.class_counts:
-            st.table({"Class": list(vp.class_counts.keys()), "Samples": list(vp.class_counts.values())})
+    if st.button("Show sign"):
+        if not typed:
+            st.error("Type or speak a word first.")
         else:
-            st.caption("No samples yet.")
+            # try to find sign
+            match = None
+            for s in SIGN_DATA:
+                if s["word"].lower() == typed.lower():
+                    match = s
+                    break
+            if match:
+                st.success(f"Found sign for: {match['word']}")
+                if match["image"] and os.path.exists(match["image"]):
+                    st.image(match["image"], use_container_width=True)
+                else:
+                    st.image("https://via.placeholder.com/400x220?text=SIGN", use_container_width=True)
+                st.caption(f"Hint: {match['hint']}")
+            else:
+                st.error("No sign found for that word. Add it to SIGNALINK later.")
+
+
+# --------------------------------------------------
+# 📊 PROGRESS
+# --------------------------------------------------
+with tab_progress:
+    st.subheader("📊 My Signalink Progress")
+
+    learned = st.session_state.signalink_progress["learned"]
+    scores = st.session_state.signalink_progress["quiz_scores"]
+
+    st.write(f"✅ Signs learned: {len(learned)}")
+    if learned:
+        st.write(", ".join(learned))
+
+    st.divider()
+
+    st.write("🧪 Quiz history:")
+    if not scores:
+        st.info("No quiz taken yet.")
     else:
-        st.info("Start the webcam and allow camera permission.")
+        for s in reversed(scores):
+            status = "✅" if s["correct"] else "❌"
+            st.write(f"{status} {s['time']} – {s['word']}")
