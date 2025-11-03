@@ -110,7 +110,7 @@ st.markdown("<div class='sub-text'>Unified support for cognitive, speech, and vi
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    if st.button("🧠 Open ALZY 1", use_container_width=True, key="btn_alzy"):
+    if st.button("🧠 Open ALZY ", use_container_width=True, key="btn_alzy"):
         st.switch_page("pages/Alzy--Beta.py")
     st.markdown("""
     <div class='feature-box'>
