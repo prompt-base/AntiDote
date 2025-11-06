@@ -10,24 +10,26 @@ st.set_page_config(page_title="AntiDote Care Toolkit", layout="wide")
 # ===============================
 st.markdown("""
 <style>
+/* App background */
 .stApp {
-  background: linear-gradient(135deg, #0f172a 0%, #0f172a 40%, #111827 100%);
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%);
   color: #ffffff;
-  font-family: 'Poppins', sans-serif;
   min-height: 100vh;
 }
-h1,h2,h3,h4 { color: #ffffff !important; }
-
-.section-title {
-  font-size: 2.4rem;
-  font-weight: 800;
-  letter-spacing: .02em;
-  margin-bottom: .8rem;
-  text-align: center;
+h1, h2, h3, h4 {
+  color: #ffffff !important;
 }
 
+/* Titles */
+.section-title {
+  font-size: 2.2rem;
+  font-weight: 800;
+  letter-spacing: .02em;
+  margin: 1.2rem 0 0.5rem 0;
+  text-align: center;
+}
 .sub-text {
-  opacity: .75;
+  opacity: 0.75;
   text-align: center;
   margin-bottom: 2rem;
 }
@@ -35,14 +37,14 @@ h1,h2,h3,h4 { color: #ffffff !important; }
 /* Floating gif */
 .floating-gif {
   position: fixed;
-  top: 15px;
-  left: 15px;
-  width: 80px;
-  height: 80px;
-  z-index: 9999;
+  top: 10px;
+  left: 10px;
+  width: 85px;
+  height: 85px;
   border-radius: 14px;
   overflow: hidden;
   box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+  z-index: 9999;
 }
 .floating-gif img {
   width: 100%;
@@ -50,17 +52,34 @@ h1,h2,h3,h4 { color: #ffffff !important; }
   object-fit: cover;
 }
 
-/* Feature boxes */
+/* Custom Buttons */
+div.stButton > button:first-child {
+    background: linear-gradient(135deg, #2563eb, #1e40af);
+    color: #ffffff !important;
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 12px;
+    padding: 10px 22px;
+    font-size: 1rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+div.stButton > button:first-child:hover {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    color: #ffffff !important;
+    transform: translateY(-2px);
+    box-shadow: 0 0 15px rgba(37,99,235,0.5);
+}
+
+/* Feature Boxes */
 .feature-box {
   background: linear-gradient(135deg, rgba(37,99,235,0.35), rgba(14,165,233,0.25));
   border: 1px solid rgba(255,255,255,0.12);
   border-radius: 20px;
   padding: 24px 16px;
-  min-height: 160px;
+  height: 220px;
   box-shadow: 0 15px 45px rgba(0,0,0,0.15);
   text-align: center;
   transition: transform .25s ease, box-shadow .25s ease;
-  cursor: pointer;
 }
 .feature-box:hover {
   transform: translateY(-5px);
@@ -78,35 +97,44 @@ h1,h2,h3,h4 { color: #ffffff !important; }
   margin-top: .4rem;
 }
 
-/* About + Team + School sections */
-.info-box {
-  background: rgba(15,23,42,0.4);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 20px;
-  padding: 25px;
-  margin: 25px 0;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.15);
-}
-
+/* Team Section */
 .team-card {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 16px;
   text-align: center;
-  background: rgba(255,255,255,0.05);
-  padding: 15px;
-  border-radius: 15px;
-  margin: 10px;
-  transition: transform .3s ease;
+  transition: all 0.3s ease;
+  height: 320px;
 }
 .team-card:hover {
-  transform: scale(1.05);
-  background: rgba(255,255,255,0.08);
+  background: rgba(255, 255, 255, 0.1);
+  transform: translateY(-3px);
+  box-shadow: 0 6px 16px rgba(0,0,0,0.2);
 }
 .team-card img {
-  border-radius: 50%;
-  width: 140px;
-  height: 140px;
+  width: 100%;
+  height: 180px;
   object-fit: cover;
+  border-radius: 12px;
   margin-bottom: 10px;
-  border: 2px solid rgba(255,255,255,0.25);
+}
+.team-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+.team-class {
+  opacity: 0.8;
+  font-size: 0.9rem;
+}
+
+/* About box */
+.about-box {
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 16px;
+  padding: 24px;
+  text-align: justify;
 }
 </style>
 
@@ -122,13 +150,12 @@ st.markdown("<div class='section-title'>🧪 AntiDote Care Toolkit</div>", unsaf
 st.markdown("<div class='sub-text'>Unified support for cognitive, speech, and vision disabilities.</div>", unsafe_allow_html=True)
 
 # ===============================
-# FEATURE BOXES (three apps)
+# FEATURE BOXES SECTION
 # ===============================
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    if st.button("🧠 Open ALZY", use_container_width=True, key="btn_alzy"):
-        st.switch_page("pages/Alzy--Beta.py")
+    st.button("🧠 Open ALZY", use_container_width=True, key="btn_alzy")
     st.markdown("""
     <div class='feature-box'>
         <div class='feature-title'>ALZY</div>
@@ -139,25 +166,23 @@ with col1:
     """, unsafe_allow_html=True)
 
 with col2:
-    if st.button("📶 Open SIGNA·LINK", use_container_width=True, key="btn_signalink"):
-        st.switch_page("pages/SignaLink--Beta.py")
+    st.button("📶 Open SIGNA·LINK", use_container_width=True, key="btn_signalink")
     st.markdown("""
     <div class='feature-box'>
         <div class='feature-title'>SIGNA·LINK</div>
         <div class='feature-desc'>
-            A voice-free communication tool for speech-impaired users using gestures & text.
+            A gesture and text-based voice-free communication platform for speech-impaired users.
         </div>
     </div>
     """, unsafe_allow_html=True)
 
 with col3:
-    if st.button("🦯 Open UNSEEN", use_container_width=True, key="btn_unseen"):
-        st.switch_page("pages/Unseen--Beta.py")
+    st.button("🦯 Open UNSEEN", use_container_width=True, key="btn_unseen")
     st.markdown("""
     <div class='feature-box'>
         <div class='feature-title'>UNSEEN</div>
         <div class='feature-desc'>
-            Navigation and voice-assist system for visually impaired users.
+            Navigation and voice-assist system for visually impaired individuals to move safely and independently.
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -165,48 +190,46 @@ with col3:
 # ===============================
 # ABOUT PROJECT SECTION
 # ===============================
-st.markdown("<div class='section-title'>📘 About the Project</div>", unsafe_allow_html=True)
+st.markdown("<div class='section-title'>💡 About the Project</div>", unsafe_allow_html=True)
 st.markdown("""
-<div class='info-box'>
-<b>AntiDote Care Toolkit</b> is a unified assistive technology platform designed to support individuals with cognitive, speech, and vision disabilities. 
-It comprises three smart modules:
-<ul>
-<li><b>ALZY:</b> A Memory Assistant for Alzheimer’s patients with reminders, caregiver tools, and GPS tracking.</li>
-<li><b>SIGNA·LINK:</b> A gesture and text-based voice-free communication system for speech-impaired users.</li>
-<li><b>UNSEEN:</b> A navigation and voice-assist solution for visually impaired individuals.</li>
-</ul>
-This project aims to leverage AI, IoT, and accessible design to enhance independence, safety, and communication for differently-abled users.
+<div class='about-box'>
+The <b>AntiDote Care Toolkit</b> is a unified platform designed to support individuals with cognitive, speech, and vision disabilities.
+It integrates three innovative modules — <b>ALZY</b>, <b>SIGNA·LINK</b>, and <b>UNSEEN</b> — providing personalized digital assistance and accessibility tools.
+
+The project focuses on bridging the gap between patients and caregivers using AI-powered interfaces,
+gesture-based communication, and audio navigation technologies — creating a compassionate and inclusive digital ecosystem.
 </div>
 """, unsafe_allow_html=True)
 
 # ===============================
 # TEAM MEMBERS SECTION
 # ===============================
-st.markdown("<div class='section-title'>👥 Team Members</div>", unsafe_allow_html=True)
-team_members = [
-    {"name": "Anurag Mondal", "class": "8-C", "img": "https://raw.githubusercontent.com/prompt-base/AntiDote/main/AntiDote/ANTIDOTE/images/anurag.jpg"},
-    {"name": "Aarav", "class": "8-C", "img": "https://raw.githubusercontent.com/prompt-base/AntiDote/main/AntiDote/ANTIDOTE/images/aarav.jpg"},
-    {"name": "Tejash", "class": "8-A", "img": "https://raw.githubusercontent.com/prompt-base/AntiDote/main/AntiDote/ANTIDOTE/images/tejash.jpg"},
-    {"name": "Priyanshu", "class": "8-A", "img": "https://raw.githubusercontent.com/prompt-base/AntiDote/main/AntiDote/ANTIDOTE/images/priyanshu.jpg"},
+st.markdown("<div class='section-title'>👥 Our Team</div>", unsafe_allow_html=True)
+cols = st.columns(4)
+
+team_data = [
+    {"img": "https://raw.githubusercontent.com/prompt-base/AntiDote/main/AntiDote/ANTIDOTE/images/aarav.jpg", "name": "Aarav Mukherjee", "cls": "Class 8 • Section A"},
+    {"img": "https://raw.githubusercontent.com/prompt-base/AntiDote/main/AntiDote/ANTIDOTE/images/anurag.jpg", "name": "Anurag Mondal", "cls": "Class 8 • Section A"},
+    {"img": "https://raw.githubusercontent.com/prompt-base/AntiDote/main/AntiDote/ANTIDOTE/images/ananya.jpg", "name": "Ananya Roy", "cls": "Class 8 • Section A"},
+    {"img": "https://raw.githubusercontent.com/prompt-base/AntiDote/main/AntiDote/ANTIDOTE/images/priyanshu.jpg", "name": "Priyanshu Das", "cls": "Class 8 • Section A"}
 ]
 
-cols = st.columns(4)
-for i, member in enumerate(team_members):
+for i, t in enumerate(team_data):
     with cols[i]:
         st.markdown(f"""
         <div class='team-card'>
-            <img src='{member['img']}' alt='{member['name']}'>
-            <h4>{member['name']}</h4>
-            <p>Class {member['class']}</p>
+            <img src="{t['img']}" alt="{t['name']}">
+            <div class='team-name'>{t['name']}</div>
+            <div class='team-class'>{t['cls']}</div>
         </div>
         """, unsafe_allow_html=True)
 
 # ===============================
 # ABOUT SCHOOL SECTION
 # ===============================
-st.markdown("<div class='section-title'>🏫 About the School</div>", unsafe_allow_html=True)
+st.markdown("<div class='section-title'>🏫 About Our School</div>", unsafe_allow_html=True)
 st.markdown("""
-<div class='info-box'>
+<div class='about-box'>
 <b><a href='https://sriaurobindoschools.org' target='_blank' style='color:#60a5fa;text-decoration:none;'>The Future Foundation School</a></b> 
 is inspired by the teachings of Sri Aurobindo and The Mother.  
 It aims to cultivate holistic development — intellectual, emotional, and spiritual — in every student.  
