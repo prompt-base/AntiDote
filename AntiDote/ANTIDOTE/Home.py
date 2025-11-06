@@ -156,6 +156,7 @@ col1, col2, col3 = st.columns(3)
 
 with col1:
     st.button("🧠 Open ALZY", use_container_width=True, key="btn_alzy")
+    st.switch_page("pages/Alzy--Beta.py")
     st.markdown("""
     <div class='feature-box'>
         <div class='feature-title'>ALZY</div>
@@ -167,6 +168,7 @@ with col1:
 
 with col2:
     st.button("📶 Open SIGNA·LINK", use_container_width=True, key="btn_signalink")
+    st.switch_page("pages/SignaLink--Beta.py")  
     st.markdown("""
     <div class='feature-box'>
         <div class='feature-title'>SIGNA·LINK</div>
@@ -178,6 +180,7 @@ with col2:
 
 with col3:
     st.button("🦯 Open UNSEEN", use_container_width=True, key="btn_unseen")
+    st.switch_page("pages/Unseen--Beta.py")
     st.markdown("""
     <div class='feature-box'>
         <div class='feature-title'>UNSEEN</div>
@@ -236,3 +239,4 @@ It aims to cultivate holistic development — intellectual, emotional, and spiri
 The school encourages innovation, empathy, and collaboration, which inspired the creation of the <b>AntiDote Care Toolkit</b> by its students.
 </div>
 """, unsafe_allow_html=True)
+
