@@ -208,10 +208,10 @@ st.markdown("<div class='section-title'>👥 Our Team</div>", unsafe_allow_html=
 cols = st.columns(4)
 
 team_data = [
-    {"img": "https://raw.githubusercontent.com/prompt-base/AntiDote/main/AntiDote/ANTIDOTE/images/aarav.jpg", "name": "Aarav Mukherjee", "cls": "Class 8 • Section A"},
-    {"img": "https://raw.githubusercontent.com/prompt-base/AntiDote/main/AntiDote/ANTIDOTE/images/anurag.jpg", "name": "Anurag Mondal", "cls": "Class 8 • Section A"},
-    {"img": "https://raw.githubusercontent.com/prompt-base/AntiDote/main/AntiDote/ANTIDOTE/images/ananya.jpg", "name": "Ananya Roy", "cls": "Class 8 • Section A"},
-    {"img": "https://raw.githubusercontent.com/prompt-base/AntiDote/main/AntiDote/ANTIDOTE/images/priyanshu.jpg", "name": "Priyanshu Das", "cls": "Class 8 • Section A"}
+    {"img": "https://raw.githubusercontent.com/prompt-base/AntiDote/main/AntiDote/ANTIDOTE/images/aarav.jpg", "name": "Anurag Mondal", "cls": "Class 8 • Section A"},
+    {"img": "https://raw.githubusercontent.com/prompt-base/AntiDote/main/AntiDote/ANTIDOTE/images/anurag.jpg", "name": "Aarav", "cls": "Class 8 • Section A"},
+    {"img": "https://raw.githubusercontent.com/prompt-base/AntiDote/main/AntiDote/ANTIDOTE/images/tejash.jpg", "name": "Tejash", "cls": "Class 8 • Section A"},
+    {"img": "https://raw.githubusercontent.com/prompt-base/AntiDote/main/AntiDote/ANTIDOTE/images/priyanshu.jpg", "name": "Priyanshu", "cls": "Class 8 • Section A"}
 ]
 
 for i, t in enumerate(team_data):
