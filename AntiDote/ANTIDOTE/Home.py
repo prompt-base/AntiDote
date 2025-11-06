@@ -1,5 +1,5 @@
 import streamlit as st
-from shared.helpers import load_css
+load_css("style.css")
 
 # ===============================
 # PAGE CONFIG
@@ -119,3 +119,4 @@ st.markdown("""
     </p>
 </div>
 """, unsafe_allow_html=True)
+
