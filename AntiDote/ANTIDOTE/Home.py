@@ -1,8 +1,6 @@
 import streamlit as st
 from shared.helpers import load_css
 
-load_css("style.css")
-
 # ===============================
 # PAGE CONFIG
 # ===============================
@@ -11,7 +9,8 @@ st.set_page_config(page_title="AntiDote Care Toolkit", layout="wide")
 # ===============================
 # GLOBAL STYLING
 # ===============================
-load_css("shared/style.css")
+# Load CSS once from shared/style.css
+load_css("style.css")
 
 # Floating gif
 st.markdown("""
@@ -121,6 +120,7 @@ st.markdown("""
     </p>
 </div>
 """, unsafe_allow_html=True)
+
 
 
 
