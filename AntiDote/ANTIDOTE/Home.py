@@ -217,11 +217,22 @@ for i, member in enumerate(team):
 # ===============================
 # ABOUT THE SCHOOL
 # ===============================
-st.markdown("<br><div class='section-title'>🏫 About the School</div>", unsafe_allow_html=True)
 st.markdown("""
-<b><a href='https://sriaurobindoschools.org' target='_blank' style='color:#60a5fa;text-decoration:none;'>The Future Foundation School</a></b> 
-is inspired by the teachings of Sri Aurobindo and The Mother.  
-It aims to cultivate holistic development — intellectual, emotional, and spiritual — in every student.  
-The school encourages innovation, empathy, and collaboration, which inspired the creation of the <b>AntiDote Care Toolkit</b> by its students.
-""")
+<br><br>
+<div style='text-align:center;'>
+    <h2 style='color:#2563eb; font-size:28px; font-weight:700;'>🏫 About the School</h2>
+    <p style='font-size:17px; line-height:1.6; color:#333; max-width:800px; margin: 10px auto;'>
+        <a href='https://sriaurobindoschools.org' target='_blank' 
+           style='color:#2563eb; font-weight:600; text-decoration:none;'>
+           The Future Foundation School
+        </a> 
+        is inspired by the profound teachings of <b>Sri Aurobindo</b> and <b>The Mother</b>.  
+        It strives to nurture every student’s <b>intellectual</b>, <b>emotional</b>, and <b>spiritual</b> growth through a 
+        harmonious blend of values and modern learning.  
+        The school fosters creativity, empathy, and teamwork — values that inspired the creation of the 
+        <b>AntiDote Care Toolkit</b> by its young innovators.
+    </p>
+</div>
+""", unsafe_allow_html=True)
+
 
