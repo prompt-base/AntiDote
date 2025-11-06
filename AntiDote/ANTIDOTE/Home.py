@@ -196,7 +196,7 @@ Each module addresses unique needs through AI-assisted communication, memory, an
 # ===============================
 st.markdown("<br><div class='section-title'>👩‍💻 Team Members</div>", unsafe_allow_html=True)
 
-team_members = [
+team = [
     {"name": "Anurag Mondal", "class": "8-C", "img": "https://raw.githubusercontent.com/prompt-base/AntiDote/main/AntiDote/ANTIDOTE/images/anurag.jpg"},
     {"name": "Aarav", "class": "8-C", "img": "https://raw.githubusercontent.com/prompt-base/AntiDote/main/AntiDote/ANTIDOTE/images/aarav.jpg"},
     {"name": "Tejash", "class": "8-A", "img": "https://raw.githubusercontent.com/prompt-base/AntiDote/main/AntiDote/ANTIDOTE/images/tejash.jpg"},
@@ -224,3 +224,4 @@ is inspired by the teachings of Sri Aurobindo and The Mother.
 It aims to cultivate holistic development — intellectual, emotional, and spiritual — in every student.  
 The school encourages innovation, empathy, and collaboration, which inspired the creation of the <b>AntiDote Care Toolkit</b> by its students.
 """)
+
