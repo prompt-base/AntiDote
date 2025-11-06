@@ -6,15 +6,15 @@ import streamlit as st
 st.set_page_config(page_title="AntiDote Care Toolkit", layout="wide")
 
 # ===============================
-# GLOBAL STYLING
+# GLOBAL STYLING (Dark blue gradient + buttons)
 # ===============================
 st.markdown("""
 <style>
 .stApp {
   background: linear-gradient(135deg, #0f172a 0%, #0f172a 40%, #111827 100%);
   color: #ffffff;
-  font-family: 'Poppins', sans-serif;
   min-height: 100vh;
+  font-family: 'Segoe UI', sans-serif;
 }
 h1,h2,h3,h4 { color: #ffffff !important; }
 
@@ -22,23 +22,21 @@ h1,h2,h3,h4 { color: #ffffff !important; }
   font-size: 2.4rem;
   font-weight: 800;
   letter-spacing: .02em;
-  margin-bottom: .8rem;
-  text-align: center;
+  margin-bottom: .4rem;
 }
 
 .sub-text {
   opacity: .75;
-  text-align: center;
-  margin-bottom: 2rem;
+  margin-bottom: 1.6rem;
 }
 
 /* Floating gif */
 .floating-gif {
   position: fixed;
-  top: 15px;
-  left: 15px;
-  width: 80px;
-  height: 80px;
+  top: 12px;
+  left: 12px;
+  width: 85px;
+  height: 85px;
   z-index: 9999;
   border-radius: 14px;
   overflow: hidden;
@@ -56,7 +54,7 @@ h1,h2,h3,h4 { color: #ffffff !important; }
   border: 1px solid rgba(255,255,255,0.12);
   border-radius: 20px;
   padding: 24px 16px;
-  min-height: 160px;
+  min-height: 260px;
   box-shadow: 0 15px 45px rgba(0,0,0,0.15);
   text-align: center;
   transition: transform .25s ease, box-shadow .25s ease;
@@ -78,35 +76,55 @@ h1,h2,h3,h4 { color: #ffffff !important; }
   margin-top: .4rem;
 }
 
-/* About + Team + School sections */
-.info-box {
-  background: rgba(15,23,42,0.4);
-  border: 1px solid rgba(255,255,255,0.08);
-  border-radius: 20px;
-  padding: 25px;
-  margin: 25px 0;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+/* Custom Streamlit buttons */
+div.stButton > button:first-child {
+    background: linear-gradient(135deg, #2563eb, #1e40af);
+    color: #ffffff !important;
+    border: 1px solid rgba(255,255,255,0.2);
+    border-radius: 12px;
+    padding: 10px 20px;
+    font-size: 1rem;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+div.stButton > button:first-child:hover {
+    background: linear-gradient(135deg, #3b82f6, #2563eb);
+    transform: translateY(-2px);
+    box-shadow: 0 0 15px rgba(37,99,235,0.5);
+}
+div.stButton > button:focus:not(:active) {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(37,99,235,0.3);
 }
 
+/* Team member cards */
 .team-card {
+  background: rgba(15,23,42,0.35);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 18px;
   text-align: center;
-  background: rgba(255,255,255,0.05);
-  padding: 15px;
-  border-radius: 15px;
-  margin: 10px;
-  transition: transform .3s ease;
+  padding: 18px;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  min-height: 280px;
 }
 .team-card:hover {
-  transform: scale(1.05);
-  background: rgba(255,255,255,0.08);
+  transform: translateY(-5px);
+  box-shadow: 0 8px 30px rgba(0,0,0,0.25);
 }
 .team-card img {
-  border-radius: 50%;
-  width: 140px;
-  height: 140px;
+  border-radius: 12px;
+  width: 100%;
+  height: 180px;
   object-fit: cover;
-  margin-bottom: 10px;
-  border: 2px solid rgba(255,255,255,0.25);
+  margin-bottom: 12px;
+}
+.team-name {
+  font-size: 1.2rem;
+  font-weight: 700;
+}
+.team-class {
+  font-size: 0.95rem;
+  opacity: 0.8;
 }
 </style>
 
@@ -127,8 +145,6 @@ st.markdown("<div class='sub-text'>Unified support for cognitive, speech, and vi
 col1, col2, col3 = st.columns(3)
 
 with col1:
-    if st.button("🧠 Open ALZY", use_container_width=True, key="btn_alzy"):
-        st.switch_page("pages/Alzy--Beta.py")
     st.markdown("""
     <div class='feature-box'>
         <div class='feature-title'>ALZY</div>
@@ -137,10 +153,10 @@ with col1:
         </div>
     </div>
     """, unsafe_allow_html=True)
+    if st.button("🧠 Open ALZY", use_container_width=True):
+        st.switch_page("pages/Alzy--Beta.py")
 
 with col2:
-    if st.button("📶 Open SIGNA·LINK", use_container_width=True, key="btn_signalink"):
-        st.switch_page("pages/SignaLink--Beta.py")
     st.markdown("""
     <div class='feature-box'>
         <div class='feature-title'>SIGNA·LINK</div>
@@ -149,10 +165,10 @@ with col2:
         </div>
     </div>
     """, unsafe_allow_html=True)
+    if st.button("📶 Open SIGNA·LINK", use_container_width=True):
+        st.switch_page("pages/SignaLink--Beta.py")
 
 with col3:
-    if st.button("🦯 Open UNSEEN", use_container_width=True, key="btn_unseen"):
-        st.switch_page("pages/Unseen--Beta.py")
     st.markdown("""
     <div class='feature-box'>
         <div class='feature-title'>UNSEEN</div>
@@ -161,28 +177,25 @@ with col3:
         </div>
     </div>
     """, unsafe_allow_html=True)
+    if st.button("🦯 Open UNSEEN", use_container_width=True):
+        st.switch_page("pages/Unseen--Beta.py")
 
 # ===============================
-# ABOUT PROJECT SECTION
+# ABOUT THE PROJECT
 # ===============================
-st.markdown("<div class='section-title'>📘 About the Project</div>", unsafe_allow_html=True)
+st.markdown("<br><br><div class='section-title'>🧬 About the Project</div>", unsafe_allow_html=True)
 st.markdown("""
-<div class='info-box'>
-<b>AntiDote Care Toolkit</b> is a unified assistive technology platform designed to support individuals with cognitive, speech, and vision disabilities. 
-It comprises three smart modules:
-<ul>
-<li><b>ALZY:</b> A Memory Assistant for Alzheimer’s patients with reminders, caregiver tools, and GPS tracking.</li>
-<li><b>SIGNA·LINK:</b> A gesture and text-based voice-free communication system for speech-impaired users.</li>
-<li><b>UNSEEN:</b> A navigation and voice-assist solution for visually impaired individuals.</li>
-</ul>
-This project aims to leverage AI, IoT, and accessible design to enhance independence, safety, and communication for differently-abled users.
-</div>
-""", unsafe_allow_html=True)
+The **AntiDote Care Toolkit** is an integrated assistive technology suite designed to empower individuals
+with cognitive, speech, and vision disabilities. It combines three innovative solutions — **ALZY**, **SIGNA·LINK**, 
+and **UNSEEN** — into one unified platform.  
+Each module addresses unique needs through AI-assisted communication, memory, and navigation tools.
+""")
 
 # ===============================
 # TEAM MEMBERS SECTION
 # ===============================
-st.markdown("<div class='section-title'>👥 Team Members</div>", unsafe_allow_html=True)
+st.markdown("<br><div class='section-title'>👩‍💻 Team Members</div>", unsafe_allow_html=True)
+
 team_members = [
     {"name": "Anurag Mondal", "class": "8-C", "img": "https://raw.githubusercontent.com/prompt-base/AntiDote/main/AntiDote/ANTIDOTE/images/anurag.jpg"},
     {"name": "Aarav", "class": "8-C", "img": "https://raw.githubusercontent.com/prompt-base/AntiDote/main/AntiDote/ANTIDOTE/images/aarav.jpg"},
@@ -191,25 +204,23 @@ team_members = [
 ]
 
 cols = st.columns(4)
-for i, member in enumerate(team_members):
-    with cols[i]:
+for i, member in enumerate(team):
+    with cols[i % 4]:
         st.markdown(f"""
         <div class='team-card'>
-            <img src='{member['img']}' alt='{member['name']}'>
-            <h4>{member['name']}</h4>
-            <p>Class {member['class']}</p>
+            <img src='{member["img"]}' alt='{member["name"]}'>
+            <div class='team-name'>{member["name"]}</div>
+            <div class='team-class'>{member["class"]}</div>
         </div>
         """, unsafe_allow_html=True)
 
 # ===============================
-# ABOUT SCHOOL SECTION
+# ABOUT THE SCHOOL
 # ===============================
-st.markdown("<div class='section-title'>🏫 About the School</div>", unsafe_allow_html=True)
+st.markdown("<br><div class='section-title'>🏫 About the School</div>", unsafe_allow_html=True)
 st.markdown("""
-<div class='info-box'>
 <b><a href='https://sriaurobindoschools.org' target='_blank' style='color:#60a5fa;text-decoration:none;'>The Future Foundation School</a></b> 
 is inspired by the teachings of Sri Aurobindo and The Mother.  
 It aims to cultivate holistic development — intellectual, emotional, and spiritual — in every student.  
 The school encourages innovation, empathy, and collaboration, which inspired the creation of the <b>AntiDote Care Toolkit</b> by its students.
-</div>
-""", unsafe_allow_html=True)
+""")
