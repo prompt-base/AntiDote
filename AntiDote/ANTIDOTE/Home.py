@@ -146,10 +146,10 @@ with col3:
     """, unsafe_allow_html=True)
 
 # ===============================
-# ABOUT-US SECTION
+# ABOUT-US SECTION123
 # ===============================
 st.markdown("<div class='section-title'>📄 About Us</div>", unsafe_allow_html=True)
-st.write("Tell your story — upload images of your team, patients, or fieldwork.")
+st.write("Tell your story — upload images of your team, patients, or fieldwork1.")
 
 uploaded_files = st.file_uploader("Upload About-Us Photos", type=["jpg", "jpeg", "png"], accept_multiple_files=True)
 for file in uploaded_files:
@@ -508,4 +508,5 @@ if about_imgs:
             st.image(str(img_path), use_container_width=True)
 else:
     st.caption("No About Us photos yet — upload above.")
+
 
