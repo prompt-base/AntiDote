@@ -119,16 +119,17 @@ with right:
     </div>
     """, unsafe_allow_html=True)
 
-    if st.button("🔁 Back to role selection", key="back_role"):
-        st.session_state.role = None
-        # Set a rerun flag instead of direct rerun
-        st.session_state.rerun_flag = True
+  import streamlit as st
 
-# Trigger rerun if flag is set
-if st.session_state.get("rerun_flag", False):
-    st.session_state.rerun_flag = False
-    st.experimental_rerun()
-
+# --- inside right column ---
+if st.button("🔁 Back to role selection", key="back_role"):
+    st.session_state.role = None
+    try:
+        from streamlit import switch_page  # Streamlit 1.22+
+        switch_page("Alzy--Beta")          # Page name exactly as your file (without .py)
+    except Exception:
+        # fallback if switch_page not available
+        st.warning("Cannot navigate to Alzy--Beta page. Please upgrade Streamlit to latest version.")
 # -------------------------------
 # Tabs for Patient
 # -------------------------------
