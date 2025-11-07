@@ -2,21 +2,36 @@ import streamlit as st
 import sys
 import os
 
-# --- Ensure shared module is discoverable ---
-current_dir = os.path.dirname(os.path.abspath(__file__))
-parent_dir = os.path.dirname(current_dir)
-shared_path = os.path.join(parent_dir, "shared")
-if shared_path not in sys.path:
-    sys.path.append(shared_path)
+# ======================================
+# FIX: Make sure shared folder is visible
+# ======================================
+current_dir = os.path.dirname(os.path.abspath(__file__))        # /ANTIDOTE/pages
+project_root = os.path.dirname(current_dir)                     # /ANTIDOTE
+shared_dir = os.path.join(project_root, "shared")               # /ANTIDOTE/shared
 
-# --- Now safe to import helpers ---
-from helpers import load_css, get_openai_client
+# Add project root & shared folder to sys.path
+for path in [project_root, shared_dir]:
+    if path not in sys.path:
+        sys.path.append(path)
+
+# ======================================
+# IMPORTS (after path fix)
+# ======================================
+from shared.helpers import load_css, get_openai_client
 from utils.alzy_utils import get_due_reminders
 
-# --- Page Config ---
+# ======================================
+# PAGE CONFIG
+# ======================================
 st.set_page_config(page_title="ALZY – Patient", layout="wide")
-load_css(os.path.join(parent_dir, "shared", "style.css"))
 
+# Load CSS safely (absolute path)
+css_path = os.path.join(shared_dir, "style.css")
+load_css(css_path)
+
+# ======================================
+# PAGE CONTENT
+# ======================================
 st.title("👩‍🦳 Patient Dashboard")
 st.markdown("Welcome! Here you can see your reminders and talk to ALZY assistant.")
 
