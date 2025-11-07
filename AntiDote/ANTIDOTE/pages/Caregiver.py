@@ -1,6 +1,6 @@
 import streamlit as st
 from ANTIDOTE.shared.helpers import load_css, get_openai_client
-from utils.alzy_utils import add_reminder, load_data
+from ANTIDOTE.utils.alzy_utils import get_due_reminders
 
 st.set_page_config(page_title="ALZY – Caregiver", layout="centered")
 load_css("shared/style.css")
