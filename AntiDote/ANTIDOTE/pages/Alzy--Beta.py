@@ -431,7 +431,7 @@ if st.session_state.role == "caretaker":
         with st.form("add_rem_form", clear_on_submit=True):
             title = st.text_input("Title")
             d = st.date_input("Date", value=now_local().date())
-            t = st.time_input("Time", value=datetime.time(20, 0))
+            t = st.time_input("Time", value=datetime.time(5, 0))
             img_up = st.file_uploader("Photo", type=["png", "jpg", "jpeg"])
             aud_up = st.file_uploader("Voice cue", type=["mp3", "wav", "m4a"])
             steps_txt = st.text_area("Steps (one per line)")
@@ -883,5 +883,6 @@ else:
                 """,
                 unsafe_allow_html=True,
             )
+
 
 
