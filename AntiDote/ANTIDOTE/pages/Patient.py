@@ -98,14 +98,13 @@ if "say" in qp:
 # -------------------------------
 st.title("🧠 ALZY – Memory Assistant (Patient)")
 
-left, right = st.columns([3, 2])  # adjust ratio for balance
+left, right = st.columns([3, 2])
 
 with left:
     nm = data.get("profile", {}).get("name", "Friend")
     st.markdown(f"**Hello, {nm}!**")
 
 with right:
-    # Role label and Back button container
     st.markdown("""
     <div style="
         display: flex; 
@@ -120,10 +119,15 @@ with right:
     </div>
     """, unsafe_allow_html=True)
 
-    # Functional Streamlit Back button
     if st.button("🔁 Back to role selection", key="back_role"):
         st.session_state.role = None
-        st.experimental_rerun()
+        # Set a rerun flag instead of direct rerun
+        st.session_state.rerun_flag = True
+
+# Trigger rerun if flag is set
+if st.session_state.get("rerun_flag", False):
+    st.session_state.rerun_flag = False
+    st.experimental_rerun()
 
 # -------------------------------
 # Tabs for Patient
