@@ -30,7 +30,7 @@ def _load_api_key() -> str:
     # 2) Local .env using python-dotenv (optional)
     try:
         from dotenv import load_dotenv  # only if installed
-        project_root = Path(r"C:\Users\Anurag\PycharmProjects\AntiDote")
+        PROJECT_ROOT = Path(__file__).parent
         env_path = project_root / ".env"
         if env_path.exists():
             load_dotenv(dotenv_path=env_path, override=True)
@@ -48,9 +48,14 @@ OPENAI_API_KEY = _load_api_key()
 # ------------------------------------------------------------
 # CONSTANT PATHS
 # ------------------------------------------------------------
-PROJECT_ROOT = Path(r"C:\Users\Anurag\PycharmProjects\AntiDote")
+PROJECT_ROOT = Path(__file__).parent
 UPLOAD_DIR = PROJECT_ROOT / "uploads"           # faces / photos folder
 DATA_FILE = PROJECT_ROOT / "data.json"          # storage for reminders etc.
+
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+if not DATA_FILE.exists():
+    with open(DATA_FILE, "w", encoding="utf-8") as f:
+        f.write("{}")  # empty JSON
 
 # ------------------------------------------------------------
 # HELPERS
@@ -877,3 +882,4 @@ else:
                 """,
                 unsafe_allow_html=True,
             )
+
