@@ -1,34 +1,23 @@
 import streamlit as st
 import sys
 import os
+import importlib.util
 
 # ======================================
-# FIX: Make sure shared folder is visible
+# Locate and load helpers.py manually
 # ======================================
-current_dir = os.path.dirname(os.path.abspath(__file__))        # /ANTIDOTE/pages
-project_root = os.path.dirname(current_dir)                     # /ANTIDOTE
-shared_dir = os.path.join(project_root, "shared")               # /ANTIDOTE/shared
+current_dir = os.path.dirname(os.path.abspath(__file__))         # /ANTIDOTE/pages
+project_root = os.path.dirname(current_dir)                      # /ANTIDOTE
+helpers_path = os.path.join(project_root, "shared", "helpers.py")
 
-# Add project root & shared folder to sys.path
-for path in [project_root, shared_dir]:
-    if path not in sys.path:
-        sys.path.append(path)
+# Dynamically import helpers.py
+spec = importlib.util.spec_from_file_location("helpers", helpers_path)
+helpers = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(helpers)
 
-# ======================================
-# IMPORTS (after path fix)
-# ======================================
-from shared.helpers import load_css, get_openai_client
-from utils.alzy_utils import get_due_reminders
-
-# ======================================
-# PAGE CONFIG
-# ======================================
-st.set_page_config(page_title="ALZY – Patient", layout="wide")
-
-# Load CSS safely (absolute path)
-css_path = os.path.join(shared_dir, "style.css")
-load_css(css_path)
-
+# Now you can access its functions
+load_css = helpers.load_css
+get_openai_client = helpers.get_openai_client
 # ======================================
 # PAGE CONTENT
 # ======================================
