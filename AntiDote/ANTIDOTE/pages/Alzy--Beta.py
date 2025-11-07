@@ -431,21 +431,19 @@ if st.session_state.role == "caretaker":
         with st.form("add_rem_form", clear_on_submit=True):
             title = st.text_input("Title")
             d = st.date_input("Date", value=now_local().date())
-            # Generate 5-minute interval options
-            time_options = []
-            for h in range(24):
-                for m in range(0, 60, 5):
-                    time_options.append(datetime.time(h, m))
+           # Generate 5-minute interval options as strings
+            time_options = [f"{h:02d}:{m:02d}" for h in range(24) for m in range(0, 60, 5)]
             
-            # Default value = nearest 5-min to now
-            def round_to_5min(dt):
-                minute = (dt.minute // 5) * 5
-                return dt.replace(minute=minute, second=0, microsecond=0)
+            # Default = nearest 5-min to now
+            now = datetime.datetime.now()
+            nearest_min = (now.minute // 5) * 5
+            default_time_str = f"{now.hour:02d}:{nearest_min:02d}"
             
-            default_time = round_to_5min(datetime.datetime.now()).time()
+            # Use selectbox for time selection
+            time_str = st.selectbox("Time", options=time_options, index=time_options.index(default_time_str))
             
-            # Use selectbox instead of free-form time input
-            t = st.selectbox("Time", options=time_options, index=time_options.index(default_time))
+            # Convert string back to datetime.time
+            t = datetime.time(int(time_str.split(":")[0]), int(time_str.split(":")[1]))
 
             img_up = st.file_uploader("Photo", type=["png", "jpg", "jpeg"])
             aud_up = st.file_uploader("Voice cue", type=["mp3", "wav", "m4a"])
@@ -898,6 +896,7 @@ else:
                 """,
                 unsafe_allow_html=True,
             )
+
 
 
 
