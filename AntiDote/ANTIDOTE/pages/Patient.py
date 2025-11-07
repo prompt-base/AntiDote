@@ -96,11 +96,9 @@ if "say" in qp:
 # -------------------------------
 # Header
 # -------------------------------
-# -------------------------------
-# Header (Patient) with Role + Back
-# -------------------------------
 st.title("🧠 ALZY – Memory Assistant (Patient)")
 
+# Columns for greeting and role/back
 left, right = st.columns([3, 2])
 
 with left:
@@ -108,35 +106,30 @@ with left:
     st.markdown(f"**Hello, {nm}!**")
 
 with right:
-    # Flex container for Role + Back button
     st.markdown("""
     <div style="
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        background: rgba(255,255,255,0.06);
-        padding: 6px 12px;
+        display: flex; 
+        justify-content: space-between; 
+        align-items: center; 
+        background: rgba(255,255,255,0.06); 
+        padding: 6px 12px; 
         border-radius: 8px;
         font-weight: 500;
     ">
         <span>Role: Patient</span>
-        <button id='back-btn' style='
-            background-color:#4CAF50;
-            color:white;
-            border:none;
-            border-radius:5px;
-            padding:4px 8px;
-            cursor:pointer;
-        '>🔁 Back</button>
     </div>
     """, unsafe_allow_html=True)
 
-# Back button in right column
+# -------------------------------
+# Back button (safe rerun)
+# -------------------------------
 if st.button("🔁 Back to role selection", key="back_role"):
+    # Reset session state flags
     st.session_state.role = None
-    st.session_state.page = "Alzy--Beta"  # flag to show landing page
-    st.experimental_rerun()
+    st.session_state.page = "Alzy--Beta"  # flag to navigate back
 
+    # Immediately rerun to reflect changes
+    st.experimental_rerun()
 
 # -------------------------------
 # Tabs for Patient
