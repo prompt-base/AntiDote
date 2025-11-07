@@ -172,7 +172,7 @@ def render_patient_tab(rem_type: str, container):
 
         st.subheader("🟡 Coming soon (24h)")
         upcoming = []
-        now_ = datetime.datetime.datetime.now()
+        now_ = datetime.datetime.now()
         for r in data["reminders"].values():
             if r.get("reminder_type", "activity") != rem_type:
                 continue
@@ -202,7 +202,7 @@ with tab_quiz:
         st.info("No people added yet.")
     else:
         if st.session_state.quiz_target_id is None:
-            due = [p for p in data["people"].values() if parse_iso(p["next_due_iso"]) <= datetime.datetime.datetime.now()]
+            due = [p for p in data["people"].values() if parse_iso(p["next_due_iso"]) <= datetime.datetime.now()]
             if not due:
                 st.success("No one due for quiz right now.")
             else:
