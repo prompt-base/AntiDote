@@ -431,19 +431,28 @@ if st.session_state.role == "caretaker":
         with st.form("add_rem_form", clear_on_submit=True):
             title = st.text_input("Title")
             d = st.date_input("Date", value=now_local().date())
-           # Generate 5-minute interval options as strings
+           # --- Time Selection (5-minute interval) ---
+
+            # Generate 5-minute interval options as strings (00:00 to 23:55)
             time_options = [f"{h:02d}:{m:02d}" for h in range(24) for m in range(0, 60, 5)]
             
-            # Default = nearest 5-min to now
+            # Get current local time
             now = datetime.datetime.now()
-            nearest_min = (now.minute // 5) * 5
-            default_time_str = f"{now.hour:02d}:{nearest_min:02d}"
             
-            # Use selectbox for time selection
+            # Find nearest *past* 5-minute mark
+            nearest_past_min = (now.minute // 5) * 5
+            default_time_str = f"{now.hour:02d}:{nearest_past_min:02d}"
+            
+            # If the default time doesn't exist in list (edge case like 23:59), fallback to last option
+            if default_time_str not in time_options:
+                default_time_str = "23:55"
+            
+            # Streamlit selectbox for time
             time_str = st.selectbox("Time", options=time_options, index=time_options.index(default_time_str))
-            
-            # Convert string back to datetime.time
+
+            # Convert string (HH:MM) to datetime.time
             t = datetime.time(int(time_str.split(":")[0]), int(time_str.split(":")[1]))
+
 
             img_up = st.file_uploader("Photo", type=["png", "jpg", "jpeg"])
             aud_up = st.file_uploader("Voice cue", type=["mp3", "wav", "m4a"])
@@ -896,6 +905,7 @@ else:
                 """,
                 unsafe_allow_html=True,
             )
+
 
 
 
