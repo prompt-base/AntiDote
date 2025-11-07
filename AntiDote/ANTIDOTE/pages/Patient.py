@@ -121,15 +121,15 @@ with right:
     """, unsafe_allow_html=True)
 
 # -------------------------------
-# Back button (safe rerun)
+# Back button (safe handling)
 # -------------------------------
 if st.button("🔁 Back to role selection", key="back_role"):
-    # Reset session state flags
+    # Reset patient session state
     st.session_state.role = None
-    st.session_state.page = "Alzy--Beta"  # flag to navigate back
+    st.session_state.patient_ai_chat = None  # optional: clear chat if desired
 
-    # Immediately rerun to reflect changes
-    st.experimental_rerun()
+    # Instead of rerun, show a message or stop here
+    st.stop()  # stops this page execution safely
 
 # -------------------------------
 # Tabs for Patient
