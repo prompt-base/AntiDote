@@ -99,43 +99,31 @@ if "say" in qp:
 st.title("🧠 ALZY – Memory Assistant (Patient)")
 
 left, right = st.columns([3, 2])  # adjust ratio for balance
+
 with left:
     nm = data.get("profile", {}).get("name", "Friend")
     st.markdown(f"**Hello, {nm}!**")
 
 with right:
-    # Container for Role + Back button
+    # Role label and Back button container
     st.markdown("""
     <div style="
-        display:flex; 
+        display: flex; 
         justify-content: space-between; 
-        align-items:center; 
+        align-items: center; 
         background: rgba(255,255,255,0.06); 
-        padding:6px 12px; 
-        border-radius:8px;
-        font-weight:500;
+        padding: 6px 12px; 
+        border-radius: 8px;
+        font-weight: 500;
     ">
         <span>Role: Patient</span>
-        <form>
-            <button style="
-                background-color:#4CAF50; 
-                color:white; 
-                border:none; 
-                border-radius:5px; 
-                padding:4px 8px;
-                cursor:pointer;
-            ">🔁 Back</button>
-        </form>
     </div>
     """, unsafe_allow_html=True)
 
-    # Functional button in Streamlit
+    # Functional Streamlit Back button
     if st.button("🔁 Back to role selection", key="back_role"):
-        try:
-            st.session_state.role = None
-            st.experimental_rerun()
-        except Exception:
-            pass
+        st.session_state.role = None
+        st.experimental_rerun()
 
 # -------------------------------
 # Tabs for Patient
