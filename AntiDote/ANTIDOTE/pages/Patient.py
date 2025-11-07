@@ -96,6 +96,9 @@ if "say" in qp:
 # -------------------------------
 # Header
 # -------------------------------
+# -------------------------------
+# Header (Patient) with Role + Back
+# -------------------------------
 st.title("🧠 ALZY – Memory Assistant (Patient)")
 
 left, right = st.columns([3, 2])
@@ -105,31 +108,38 @@ with left:
     st.markdown(f"**Hello, {nm}!**")
 
 with right:
+    # Flex container for Role + Back button
     st.markdown("""
     <div style="
-        display: flex; 
-        justify-content: space-between; 
-        align-items: center; 
-        background: rgba(255,255,255,0.06); 
-        padding: 6px 12px; 
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: rgba(255,255,255,0.06);
+        padding: 6px 12px;
         border-radius: 8px;
         font-weight: 500;
     ">
         <span>Role: Patient</span>
+        <button id='back-btn' style='
+            background-color:#4CAF50;
+            color:white;
+            border:none;
+            border-radius:5px;
+            padding:4px 8px;
+            cursor:pointer;
+        '>🔁 Back</button>
     </div>
     """, unsafe_allow_html=True)
 
-  import streamlit as st
-
-# --- inside right column ---
+# Functional Streamlit button using switch_page
 if st.button("🔁 Back to role selection", key="back_role"):
     st.session_state.role = None
     try:
-        from streamlit import switch_page  # Streamlit 1.22+
-        switch_page("Alzy--Beta")          # Page name exactly as your file (without .py)
+        from streamlit import switch_page
+        switch_page("Alzy--Beta")  # Page name exactly as your file, no .py
     except Exception:
-        # fallback if switch_page not available
         st.warning("Cannot navigate to Alzy--Beta page. Please upgrade Streamlit to latest version.")
+
 # -------------------------------
 # Tabs for Patient
 # -------------------------------
