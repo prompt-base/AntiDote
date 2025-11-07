@@ -8,12 +8,24 @@ import uuid
 import random
 import datetime
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 
 import streamlit as st
-from PIL import Image
+from PIL import Image  # noqa: F401 (kept for future use)
 import requests
 import streamlit.components.v1 as components
+
+# ------------------------------------------------------------
+# CONSTANT PATHS (define these before using them anywhere)
+# ------------------------------------------------------------
+PROJECT_ROOT = Path(__file__).parent
+UPLOAD_DIR = Path("/tmp/alzy_uploads")       # faces / photos folder
+DATA_FILE = PROJECT_ROOT / ".data_temp.json" # storage for reminders etc.
+
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+if not DATA_FILE.exists():
+    with open(DATA_FILE, "w", encoding="utf-8") as f:
+        f.write("{}")  # empty JSON
 
 # ------------------------------------------------------------
 # SAFE API KEY LOADING (works local + Streamlit Cloud)
@@ -30,8 +42,7 @@ def _load_api_key() -> str:
     # 2) Local .env using python-dotenv (optional)
     try:
         from dotenv import load_dotenv  # only if installed
-        PROJECT_ROOT = Path(__file__).parent
-        env_path = project_root / ".env"
+        env_path = PROJECT_ROOT / ".env"
         if env_path.exists():
             load_dotenv(dotenv_path=env_path, override=True)
         else:
@@ -44,19 +55,6 @@ def _load_api_key() -> str:
     return (os.getenv("OPENAI_API_KEY") or "").strip()
 
 OPENAI_API_KEY = _load_api_key()
-
-# ------------------------------------------------------------
-# CONSTANT PATHS
-# ------------------------------------------------------------
-PROJECT_ROOT = Path(__file__).parent
-UPLOAD_DIR = Path("/tmp/alzy_uploads")
-UPLOAD_DIR.mkdir(parents=True, exist_ok=True)           # faces / photos folder
-DATA_FILE = PROJECT_ROOT / ".data_temp.json"         # storage for reminders etc.
-
-UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-if not DATA_FILE.exists():
-    with open(DATA_FILE, "w", encoding="utf-8") as f:
-        f.write("{}")  # empty JSON
 
 # ------------------------------------------------------------
 # HELPERS
@@ -129,6 +127,7 @@ def save_upload(upload, subdir: str) -> str:
 # Spaced repetition
 SR_INTERVALS = [1, 2, 4, 7, 14, 30]
 def next_sr_due(stage: int) -> datetime.datetime:
+    stage = max(1, stage)  # defensive guard
     idx = min(stage, len(SR_INTERVALS)) - 1
     return now_local() + datetime.timedelta(days=SR_INTERVALS[idx])
 
@@ -218,12 +217,27 @@ def add_log(data: Dict[str, Any], reminder: Dict[str, Any], action: str):
     save_data(data)
 
 def get_memory_book_images() -> List[Path]:
-    imgs = []
-    if UPLOAD_DIR.exists():
-        for f in UPLOAD_DIR.iterdir():
-            if f.suffix.lower() in [".jpg", ".jpeg", ".png", ".gif", ".webp"]:
-                imgs.append(f)
-    return sorted(imgs)
+    if not UPLOAD_DIR.exists():
+        return []
+    # Recursively find images within all subfolders of UPLOAD_DIR
+    exts = ("*.jpg", "*.jpeg", "*.png", "*.gif", "*.webp")
+    files: List[Path] = []
+    for ext in exts:
+        files.extend(UPLOAD_DIR.rglob(ext))
+    # Filter out any files within an "audio" folder, if ever present
+    return sorted([f for f in files if "audio" not in f.parts])
+
+# Query param helper compatible with older/newer Streamlit versions
+def get_qp(name: str) -> Optional[str]:
+    try:
+        qp = st.query_params  # modern API
+        val = qp.get(name)
+    except Exception:
+        qp = st.experimental_get_query_params()  # fallback for older Streamlit
+        val = qp.get(name)
+    if isinstance(val, list):
+        return val[0]
+    return val
 
 # ------------------------------------------------------------
 # PAGE CONFIG + CSS
@@ -268,17 +282,15 @@ st.markdown(
       border: 1px solid rgba(255,255,255,0.25);
     }
     .stButton button {
-    background-color: #6366f1 !important;  /* your desired button color */
-    color: #fff !important;                 /* button text color */
-    border-radius: 12px !important;
-    padding: 10px 14px !important;
-    font-weight: bold;
+      background-color: #6366f1 !important;
+      color: #fff !important;
+      border-radius: 12px !important;
+      padding: 10px 14px !important;
+      font-weight: bold;
     }
-
-    /* Hover effect */
     .stButton button:hover {
-    background-color: #4f46e5 !important;  /* slightly darker on hover */
-    color: #fff !important;
+      background-color: #4f46e5 !important;
+      color: #fff !important;
     }
     .floating-gif {
       position: fixed; top:10px; left:10px; width:90px; height:90px;
@@ -309,9 +321,7 @@ if "patient_ai_chat" not in st.session_state:
     ]
 
 # support ?role=patient or ?role=caretaker
-qp_role = st.query_params.get("role")
-if isinstance(qp_role, list):
-    qp_role = qp_role[0]
+qp_role = get_qp("role")
 if qp_role in ("patient", "caretaker"):
     st.session_state.role = qp_role
 
@@ -431,28 +441,16 @@ if st.session_state.role == "caretaker":
         with st.form("add_rem_form", clear_on_submit=True):
             title = st.text_input("Title")
             d = st.date_input("Date", value=now_local().date())
-           # --- Time Selection (5-minute interval) ---
 
-            # Generate 5-minute interval options as strings (00:00 to 23:55)
+            # --- Time Selection (5-minute interval) ---
             time_options = [f"{h:02d}:{m:02d}" for h in range(24) for m in range(0, 60, 5)]
-            
-            # Get current local time
-            now = datetime.datetime.now()
-            
-            # Find nearest *past* 5-minute mark
-            nearest_past_min = (now.minute // 5) * 5
-            default_time_str = f"{now.hour:02d}:{nearest_past_min:02d}"
-            
-            # If the default time doesn't exist in list (edge case like 23:59), fallback to last option
+            now_dt = now_local()
+            nearest_past_min = (now_dt.minute // 5) * 5
+            default_time_str = f"{now_dt.hour:02d}:{nearest_past_min:02d}"
             if default_time_str not in time_options:
                 default_time_str = "23:55"
-            
-            # Streamlit selectbox for time
             time_str = st.selectbox("Time", options=time_options, index=time_options.index(default_time_str))
-
-            # Convert string (HH:MM) to datetime.time
             t = datetime.time(int(time_str.split(":")[0]), int(time_str.split(":")[1]))
-
 
             img_up = st.file_uploader("Photo", type=["png", "jpg", "jpeg"])
             aud_up = st.file_uploader("Voice cue", type=["mp3", "wav", "m4a"])
@@ -552,12 +550,8 @@ if st.session_state.role == "caretaker":
             height=80,
         )
 
-        new_lat = st.query_params.get("lat")
-        new_lon = st.query_params.get("lon")
-        if isinstance(new_lat, list):
-            new_lat = new_lat[0]
-        if isinstance(new_lon, list):
-            new_lon = new_lon[0]
+        new_lat = get_qp("lat")
+        new_lon = get_qp("lon")
         if new_lat and new_lon:
             data["gps"]["lat"] = new_lat
             data["gps"]["lon"] = new_lon
@@ -773,7 +767,7 @@ else:
             with st.chat_message(msg["role"]):
                 st.markdown(msg["content"])
 
-        # speech-to-text button (no unsupported args)
+        # speech-to-text button
         st.markdown(
             """
             <div style="margin:8px 0 12px 0;">
@@ -818,11 +812,9 @@ else:
         )
 
         # get spoken text (from URL param)
-        spoken = st.query_params.get("say")
-        if isinstance(spoken, list):
-            spoken = spoken[0]
+        spoken = get_qp("say")
 
-        # chat input (no 'value' kw — not supported)
+        # chat input
         typed = st.chat_input("Type your message")
         user_input = spoken if spoken else typed
 
@@ -854,10 +846,14 @@ else:
                         "max_tokens": 150,
                         "temperature": 0.6,
                     }
-                    resp = requests.post(url, headers=headers, json=payload, timeout=20)
+                    resp = requests.post(url, headers=headers, json=payload, timeout=15)
                     if resp.status_code == 200:
                         data_json = resp.json()
-                        reply_text = data_json["choices"][0]["message"]["content"]
+                        reply_text = (
+                            data_json.get("choices", [{}])[0]
+                            .get("message", {})
+                            .get("content", "I’m here with you.")
+                        )
                     else:
                         reply_text = f"⚠️ API error {resp.status_code}: {resp.text[:160]}"
                 except Exception as e:
@@ -865,7 +861,7 @@ else:
             else:
                 reply_text = (
                     "❗ No OPENAI_API_KEY found.\n"
-                    "Add it to C:\\Users\\Anurag\\PycharmProjects\\AntiDote\\.env or Streamlit Secrets."
+                    f"Add it to {PROJECT_ROOT / '.env'} or Streamlit Secrets."
                 )
 
             with st.chat_message("assistant"):
@@ -905,9 +901,3 @@ else:
                 """,
                 unsafe_allow_html=True,
             )
-
-
-
-
-
-
