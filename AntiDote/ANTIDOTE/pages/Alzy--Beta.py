@@ -431,7 +431,22 @@ if st.session_state.role == "caretaker":
         with st.form("add_rem_form", clear_on_submit=True):
             title = st.text_input("Title")
             d = st.date_input("Date", value=now_local().date())
-            t = st.time_input("Time", value=datetime.time(5, 0))
+            # Generate 5-minute interval options
+            time_options = []
+            for h in range(24):
+                for m in range(0, 60, 5):
+                    time_options.append(datetime.time(h, m))
+            
+            # Default value = nearest 5-min to now
+            def round_to_5min(dt):
+                minute = (dt.minute // 5) * 5
+                return dt.replace(minute=minute, second=0, microsecond=0)
+            
+            default_time = round_to_5min(datetime.datetime.now()).time()
+            
+            # Use selectbox instead of free-form time input
+            t = st.selectbox("Time", options=time_options, index=time_options.index(default_time))
+
             img_up = st.file_uploader("Photo", type=["png", "jpg", "jpeg"])
             aud_up = st.file_uploader("Voice cue", type=["mp3", "wav", "m4a"])
             steps_txt = st.text_area("Steps (one per line)")
@@ -883,6 +898,7 @@ else:
                 """,
                 unsafe_allow_html=True,
             )
+
 
 
 
