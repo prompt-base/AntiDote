@@ -261,6 +261,19 @@ st.markdown(
       font-size: 0.75rem;
       border: 1px solid rgba(255,255,255,0.25);
     }
+    .stButton button {
+    background-color: #6366f1 !important;  /* your desired button color */
+    color: #fff !important;                 /* button text color */
+    border-radius: 12px !important;
+    padding: 10px 14px !important;
+    font-weight: bold;
+    }
+
+    /* Hover effect */
+    .stButton button:hover {
+    background-color: #4f46e5 !important;  /* slightly darker on hover */
+    color: #fff !important;
+    }
     .floating-gif {
       position: fixed; top:10px; left:10px; width:90px; height:90px;
       z-index: 9999; border-radius: 16px; overflow:hidden;
