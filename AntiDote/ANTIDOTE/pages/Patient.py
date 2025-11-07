@@ -131,12 +131,12 @@ with right:
     </div>
     """, unsafe_allow_html=True)
 
-# Functional Streamlit button using switch_page
+# Back button in right column
 if st.button("🔁 Back to role selection", key="back_role"):
     st.session_state.role = None
-    # Simulate page switch using query params
-    st.experimental_set_query_params(page="Alzy--Beta")
+    st.session_state.page = "Alzy--Beta"  # flag to show landing page
     st.experimental_rerun()
+
 
 # -------------------------------
 # Tabs for Patient
