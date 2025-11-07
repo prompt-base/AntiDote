@@ -49,8 +49,9 @@ OPENAI_API_KEY = _load_api_key()
 # CONSTANT PATHS
 # ------------------------------------------------------------
 PROJECT_ROOT = Path(__file__).parent
-UPLOAD_DIR = PROJECT_ROOT / "uploads"           # faces / photos folder
-DATA_FILE = PROJECT_ROOT / "data.json"          # storage for reminders etc.
+UPLOAD_DIR = Path("/tmp/alzy_uploads")
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)           # faces / photos folder
+DATA_FILE = PROJECT_ROOT / ".data_temp.json"         # storage for reminders etc.
 
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 if not DATA_FILE.exists():
@@ -106,12 +107,12 @@ def load_data() -> Dict[str, Any]:
     return data
 
 def save_data(data: Dict[str, Any]) -> None:
+    st.session_state.data = data
     try:
         with open(DATA_FILE, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)
     except Exception:
-        pass
-    st.session_state.data = data
+        pass  # fail silently if DATA_FILE is ephemeral
 
 def save_upload(upload, subdir: str) -> str:
     if not upload:
@@ -882,4 +883,5 @@ else:
                 """,
                 unsafe_allow_html=True,
             )
+
 
