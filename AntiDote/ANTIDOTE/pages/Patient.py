@@ -98,18 +98,39 @@ if "say" in qp:
 # -------------------------------
 st.title("🧠 ALZY – Memory Assistant (Patient)")
 
-left, right = st.columns([4, 1])
+left, right = st.columns([3, 2])  # adjust ratio for balance
 with left:
     nm = data.get("profile", {}).get("name", "Friend")
     st.markdown(f"**Hello, {nm}!**")
+
 with right:
-    st.markdown("<div style='background:rgba(255,255,255,0.06);padding:6px;border-radius:8px;text-align:center;'>Role: Patient</div>", unsafe_allow_html=True)
-    if st.button("🔁 Back to role selection"):
-        # send back to landing page if you have one; using switch_page if available
-        try:
-            st.experimental_set_query_params()  # clears query params safely (optional)
-        except Exception:
-            pass
+    # Container for Role + Back button
+    st.markdown("""
+    <div style="
+        display:flex; 
+        justify-content: space-between; 
+        align-items:center; 
+        background: rgba(255,255,255,0.06); 
+        padding:6px 12px; 
+        border-radius:8px;
+        font-weight:500;
+    ">
+        <span>Role: Patient</span>
+        <form>
+            <button style="
+                background-color:#4CAF50; 
+                color:white; 
+                border:none; 
+                border-radius:5px; 
+                padding:4px 8px;
+                cursor:pointer;
+            ">🔁 Back</button>
+        </form>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # Functional button in Streamlit
+    if st.button("🔁 Back to role selection", key="back_role"):
         try:
             st.session_state.role = None
             st.experimental_rerun()
