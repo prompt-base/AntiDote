@@ -134,11 +134,9 @@ with right:
 # Functional Streamlit button using switch_page
 if st.button("🔁 Back to role selection", key="back_role"):
     st.session_state.role = None
-    try:
-        from streamlit import switch_page
-        switch_page("Alzy--Beta")  # Page name exactly as your file, no .py
-    except Exception:
-        st.warning("Cannot navigate to Alzy--Beta page. Please upgrade Streamlit to latest version.")
+    # Simulate page switch using query params
+    st.experimental_set_query_params(page="Alzy--Beta")
+    st.experimental_rerun()
 
 # -------------------------------
 # Tabs for Patient
