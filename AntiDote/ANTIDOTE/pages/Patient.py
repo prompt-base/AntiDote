@@ -1,9 +1,21 @@
 import streamlit as st
-from shared.helpers import load_css, get_openai_client
+import sys
+import os
+
+# --- Ensure shared module is discoverable ---
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+shared_path = os.path.join(parent_dir, "shared")
+if shared_path not in sys.path:
+    sys.path.append(shared_path)
+
+# --- Now safe to import helpers ---
+from helpers import load_css, get_openai_client
 from utils.alzy_utils import get_due_reminders
 
+# --- Page Config ---
 st.set_page_config(page_title="ALZY – Patient", layout="wide")
-load_css("shared/style.css")
+load_css(os.path.join(parent_dir, "shared", "style.css"))
 
 st.title("👩‍🦳 Patient Dashboard")
 st.markdown("Welcome! Here you can see your reminders and talk to ALZY assistant.")
