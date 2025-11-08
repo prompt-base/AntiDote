@@ -526,7 +526,7 @@ def _reminders_by_type(rem_type: str) -> List[Dict[str, Any]]:
     # show most recent first in general listings; for due/coming we'll sort by time explicitly
     return sorted(items, key=lambda x: parse_iso(x.get("when_iso","1970-01-01T00:00:00")), reverse=True)
 
-def _render_reminder_card(rec: Dict[str, Any], slno: int, is_caregiver: bool):
+def _render_reminder_card(rec: Dict[str, Any], slno: int, is_caregiver: bool, key_prefix: str):
     st.markdown('<div class="alzy-card">', unsafe_allow_html=True)
     st.markdown('<div class="alzy-row">', unsafe_allow_html=True)
     _render_thumb(rec.get("image_path",""))
@@ -546,23 +546,23 @@ def _render_reminder_card(rec: Dict[str, Any], slno: int, is_caregiver: bool):
             st.markdown("**Audio:**")
             _render_audio(rec["audio_path"])
 
-        # Actions
+        # Actions with unique keys per scope
         st.markdown('<div class="alzy-actions">', unsafe_allow_html=True)
         c1, c2, c3 = st.columns(3)
         with c1:
-            if st.button("✅ Done", key=f"done_{rec['id']}"):
+            if st.button("✅ Done", key=f"{key_prefix}_done_{rec['id']}"):
                 advance_reminder(rec)
                 if rec.get("reminder_type") == "medicine":
                     add_log(data, rec, "taken (caregiver)" if is_caregiver else "taken (patient)")
                 save_runtime_data(data); st.rerun()
         with c2:
-            if st.button("⏰ Snooze", key=f"snooze_{rec['id']}", help="Snooze by 10 minutes"):
+            if st.button("⏰ Snooze", key=f"{key_prefix}_snooze_{rec['id']}", help="Snooze by 10 minutes"):
                 snooze_reminder(rec, 10)
                 if rec.get("reminder_type") == "medicine":
                     add_log(data, rec, "snoozed (caregiver)" if is_caregiver else "snoozed (patient)")
                 save_runtime_data(data); st.rerun()
         with c3:
-            if st.button("🗑️ Remove", key=f"remove_{rec['id']}"):
+            if st.button("🗑️ Remove", key=f"{key_prefix}_remove_{rec['id']}"):
                 data["reminders"].pop(rec["id"], None)
                 save_runtime_data(data); st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)  # .alzy-actions
@@ -570,13 +570,12 @@ def _render_reminder_card(rec: Dict[str, Any], slno: int, is_caregiver: bool):
     st.markdown('</div>', unsafe_allow_html=True)  # .alzy-row
     st.markdown('</div>', unsafe_allow_html=True)  # .alzy-card
 
-def _render_due_and_coming(is_caregiver: bool):
-    # Group by type
+
+def _render_due_and_coming(is_caregiver: bool, types: tuple = ("activity", "medicine"), scope: str = "scope"):
+    """Render Due Now + Coming Soon for the given reminder types only."""
     now_ = now_local()
-    sections = [
-        ("Activity", "activity"),
-        ("Medicine", "medicine"),
-    ]
+    sections = [(t.title(), t) for t in types]
+
     # DUE NOW
     st.subheader("🔔 Due now")
     for label, t in sections:
@@ -585,10 +584,9 @@ def _render_due_and_coming(is_caregiver: bool):
         if not due:
             st.info("Nothing due.")
         else:
-            # sort by next due ascending for user flow
             due = sorted(due, key=lambda x: parse_iso(x["next_due_iso"]))
             for i, r in enumerate(due, 1):
-                _render_reminder_card(r, i, is_caregiver)
+                _render_reminder_card(r, i, is_caregiver, key_prefix=f"{scope}_due_{t}")
 
     # COMING SOON (24h)
     st.subheader("🟡 Coming soon (24h)")
@@ -605,7 +603,8 @@ def _render_due_and_coming(is_caregiver: bool):
         else:
             upcoming = sorted(upcoming, key=lambda x: parse_iso(x["next_due_iso"]))
             for i, r in enumerate(upcoming, 1):
-                _render_reminder_card(r, i, is_caregiver)
+                _render_reminder_card(r, i, is_caregiver, key_prefix=f"{scope}_soon_{t}")
+
 
 def _display_memory_book_gallery():
     imgs = get_memory_book_images()
@@ -999,3 +998,4 @@ else:
                 """,
                 unsafe_allow_html=True,
             )
+
