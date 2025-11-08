@@ -516,7 +516,7 @@ def _reminders_by_type(rem_type: str) -> List[Dict[str, Any]]:
     items = [r for r in data["reminders"].values() if r.get("reminder_type","activity")==rem_type]
     return sorted(items, key=lambda x: parse_iso(x.get("when_iso","1970-01-01T00:00:00")), reverse=True)
 
-def _render_reminder_card(rec: Dict[str, Any], slno: int, is_caregiver: bool, key_prefix: str):
+def _render_reminder_card(rec: Dict[str, Any], slno: int, is_caregiver: bool, key_prefix: str, show_actions: bool = True):
     # nice container (no raw HTML wrappers that would get separated)
     with st.container():
         # subtle background via markdown block (optional):
@@ -541,23 +541,25 @@ def _render_reminder_card(rec: Dict[str, Any], slno: int, is_caregiver: bool, ke
                 st.markdown("**Audio:**")
                 _render_audio(rec["audio_path"])
 
-            c1, c2, c3 = st.columns(3)
-            with c1:
-                if st.button("✅ Done", key=f"{key_prefix}_done_{rec['id']}"):
-                    advance_reminder(rec)
-                    if rec.get("reminder_type") == "medicine":
-                        add_log(data, rec, "taken (caregiver)" if is_caregiver else "taken (patient)")
-                    save_runtime_data(data); st.rerun()
-            with c2:
-                if st.button("⏰ Snooze", key=f"{key_prefix}_snooze_{rec['id']}", help="Snooze by 10 minutes"):
-                    snooze_reminder(rec, 10)
-                    if rec.get("reminder_type") == "medicine":
-                        add_log(data, rec, "snoozed (caregiver)" if is_caregiver else "snoozed (patient)")
-                    save_runtime_data(data); st.rerun()
-            with c3:
-                if st.button("🗑️ Remove", key=f"{key_prefix}_remove_{rec['id']}"):
-                    data["reminders"].pop(rec["id"], None)
-                    save_runtime_data(data); st.rerun()
+           if show_actions:
+    c1, c2, c3 = st.columns(3)
+    with c1:
+        if st.button("✅ Done", key=f"{key_prefix}_done_{rec['id']}"):
+            advance_reminder(rec)
+            if rec.get("reminder_type") == "medicine":
+                add_log(data, rec, "taken (caregiver)" if is_caregiver else "taken (patient)")
+            save_runtime_data(data); st.rerun()
+    with c2:
+        if st.button("⏰ Snooze", key=f"{key_prefix}_snooze_{rec['id']}", help="Snooze by 10 minutes"):
+            snooze_reminder(rec, 10)
+            if rec.get("reminder_type") == "medicine":
+                add_log(data, rec, "snoozed (caregiver)" if is_caregiver else "snoozed (patient)")
+            save_runtime_data(data); st.rerun()
+    with c3:
+        if st.button("🗑️ Remove", key=f"{key_prefix}_remove_{rec['id']}"):
+            data["reminders"].pop(rec["id"], None)
+            save_runtime_data(data); st.rerun()
+
 
         # st.markdown('</div>', unsafe_allow_html=True)  # if you used the optional open div above
 
@@ -578,7 +580,7 @@ def _render_due_and_coming(is_caregiver: bool, types: tuple = ("activity", "medi
         else:
             due = sorted(due, key=lambda x: parse_iso(x["next_due_iso"]))
             for i, r in enumerate(due, 1):
-                _render_reminder_card(r, i, is_caregiver, key_prefix=f"{scope}_due_{t}")
+               _render_reminder_card(r, i, is_caregiver, key_prefix=f"{scope}_due_{t}", show_actions=True)
 
     # COMING SOON (24h)
     st.subheader("🟡 Coming soon")
@@ -595,7 +597,7 @@ def _render_due_and_coming(is_caregiver: bool, types: tuple = ("activity", "medi
         else:
             upcoming = sorted(upcoming, key=lambda x: parse_iso(x["next_due_iso"]))
             for i, r in enumerate(upcoming, 1):
-                _render_reminder_card(r, i, is_caregiver, key_prefix=f"{scope}_soon_{t}")
+               _render_reminder_card(r, i, is_caregiver, key_prefix=f"{scope}_soon_{t}", show_actions=False)
 
 def _display_memory_book_gallery():
     imgs = get_memory_book_images()
@@ -1027,6 +1029,7 @@ else:
                 """,
                 unsafe_allow_html=True,
             )
+
 
 
 
