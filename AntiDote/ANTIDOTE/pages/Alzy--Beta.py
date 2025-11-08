@@ -4,7 +4,6 @@
 # ------------------------------------------------------------
 import os
 import re
-import io
 import json
 import uuid
 import random
@@ -27,7 +26,7 @@ except Exception:
 # ------------------------------------------------------------
 PROJECT_DIR = Path(__file__).parent                   # ANTIDOTE/pages
 APP_DIR = PROJECT_DIR.parent                          # ANTIDOTE
-REPO_ROOT = APP_DIR.parent                            # repo root (where data.json lives)
+REPO_ROOT = APP_DIR.parent                            # repo root (where data.json & uploads live)
 
 # Base scratch area for runtime uploads
 UPLOAD_BASE = Path("/tmp/alzy_uploads")
@@ -86,18 +85,13 @@ OPENAI_API_KEY = _load_api_key()
 # ------------------------------------------------------------
 def now_local() -> dt.datetime:
     n = dt.datetime.now(tz=IST) if IST else dt.datetime.now()
-    # strip microseconds for cleaner ISO
     return n.replace(microsecond=0)
 
 def parse_iso(ts: str) -> dt.datetime:
-    """
-    Treat stored ISO strings as local IST wall-time (naive -> IST).
-    If string is timezone-aware, convert to IST.
-    """
+    """Treat stored ISO strings as IST wall-time if naive; convert to IST if aware."""
     try:
         v = dt.datetime.fromisoformat(ts)
         if v.tzinfo is None:
-            # interpret as IST
             return v.replace(tzinfo=IST) if IST else v
         return v.astimezone(IST) if IST else v
     except Exception:
@@ -116,22 +110,26 @@ def human_time(dt_iso: str) -> str:
         return dt_iso
 
 # ------------------------------------------------------------
-# Image Path
+# PATH RESOLUTION HELPERS (baseline-relative media)
 # ------------------------------------------------------------
 def resolve_path(p: str) -> str:
-    """Return an absolute path for media. Supports:
-    - absolute paths (unchanged)
-    - baseline relative paths stored in data.json (resolved from REPO_ROOT)
+    """Return absolute path for media:
+    - absolute path => unchanged if exists
+    - repo-relative (e.g., 'uploads/images/...') => resolve from REPO_ROOT
+    - otherwise return original
     """
     if not p:
         return ""
     if os.path.isabs(p) and os.path.exists(p):
         return p
-    # try baseline relative (repo-root)
     candidate = (REPO_ROOT / p).resolve()
     if os.path.exists(candidate):
         return str(candidate)
-    return p  # fallback (may still be relative runtime path)
+    return p
+
+def image_exists(path: str) -> bool:
+    rp = resolve_path(path)
+    return bool(rp and os.path.exists(rp))
 
 # ------------------------------------------------------------
 # DATA LOAD & MERGE
@@ -216,7 +214,7 @@ def save_runtime_data(data: Dict[str, Any]) -> None:
     st.session_state.data = data
 
 # ------------------------------------------------------------
-# HELPERS
+# OTHER HELPERS
 # ------------------------------------------------------------
 def _slugify(s: str) -> str:
     s = (s or "").strip().lower()
@@ -332,7 +330,7 @@ def _file_mtime_or_zero(path: Path) -> float:
 def get_memory_book_images() -> List[Path]:
     """
     Combine baseline memory_book_images plus runtime folder images.
-    Return list of Paths (existing first), newest first.
+    Return list of Paths (existing), newest first.
     """
     imgs: List[Path] = []
 
@@ -362,19 +360,21 @@ def ensure_people_from_memory_book(data: Dict[str, Any]) -> int:
         return 0
 
     existing_by_path = {
-        os.path.abspath(p.get("image_path", "")): pid
+        os.path.abspath(resolve_path(p.get("image_path", ""))): pid
         for pid, p in data["people"].items()
         if p.get("image_path")
     }
 
     added = 0
     for img_path in imgs:
-        ap = os.path.abspath(str(img_path))
+        ap = os.path.abspath(resolve_path(str(img_path)))
         if ap in existing_by_path:
             continue
 
         stem = Path(img_path).stem
-        nice = stem.split("-", 1)[0].replace("-", " ").replace("_", " ").title() or "Family"
+        # derive a friendly name prefix (before first dash)
+        base = stem.split("-", 1)[0]
+        nice = base.replace("-", " ").replace("_", " ").title() or "Family"
 
         pid = uuid.uuid4().hex
         data["people"][pid] = {
@@ -401,10 +401,6 @@ def get_qp(name: str) -> Optional[str]:
     if isinstance(v, list):
         return v[0]
     return v
-
-def image_exists(path: str) -> bool:
-    rp = resolve_path(path)
-    return bool(rp and os.path.exists(rp))
 
 def read_audio_bytes(path: str) -> Optional[bytes]:
     try:
@@ -486,40 +482,6 @@ if qp_role in ("patient", "caretaker"):
     st.session_state.role = qp_role
 
 # ------------------------------------------------------------
-# LANDING (choose role)
-# ------------------------------------------------------------
-if st.session_state.role is None:
-    st.markdown("<h1 style='text-align:center;'>🧠 ALZY – Memory Assistant</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align:center;'>Who are you?</p>", unsafe_allow_html=True)
-    c1, c2 = st.columns(2)
-    with c1:
-        if st.button("🧑‍🦽 Patient", use_container_width=True, key="choose_patient"):
-            st.session_state.role = "patient"; st.rerun()
-    with c2:
-        if st.button("🧑‍⚕️ Caregiver", use_container_width=True, key="choose_caregiver"):
-            st.session_state.role = "caretaker"; st.rerun()
-    st.stop()
-
-# ------------------------------------------------------------
-# COMMON HEADER
-# ------------------------------------------------------------
-st.title("🧠 ALZY – Memory Assistant")
-left, right = st.columns([4, 1])
-with left:
-    nm = data["profile"].get("name", "Friend")
-    if st.session_state.role == "caretaker":
-        new_nm = st.text_input("Patient / User name", value=nm)
-        if new_nm.strip() and new_nm != nm:
-            data["profile"]["name"] = new_nm.strip()
-            save_runtime_data(data)
-    else:
-        st.markdown(f"**Hello, {nm}!**")
-with right:
-    st.markdown(f"<span class='role-badge'>Current: {st.session_state.role.title()}</span>", unsafe_allow_html=True)
-    if st.button("🔁 Change role"):
-        st.session_state.role = None; st.rerun()
-
-# ------------------------------------------------------------
 # SHARED RENDER HELPERS
 # ------------------------------------------------------------
 def _render_thumb(path: str):
@@ -531,20 +493,16 @@ def _render_thumb(path: str):
     else:
         st.markdown('<div class="noimg">No image</div>', unsafe_allow_html=True)
 
-
 def _render_audio(audio_path: str):
-    if audio_path and os.path.exists((REPO_ROOT / audio_path).resolve()) and not os.path.isabs(audio_path):
-        # Baseline relative path
-        b = read_audio_bytes(str((REPO_ROOT / audio_path).resolve()))
-        if b: st.audio(b, format="audio/mp3")
-    elif audio_path and os.path.exists(audio_path):
-        b = read_audio_bytes(audio_path)
-        if b: st.audio(b)
-    # else no audio
+    if not audio_path:
+        return
+    rp = resolve_path(audio_path)
+    b = read_audio_bytes(rp)
+    if b:
+        st.audio(b)
 
 def _reminders_by_type(rem_type: str) -> List[Dict[str, Any]]:
     items = [r for r in data["reminders"].values() if r.get("reminder_type","activity")==rem_type]
-    # show most recent first in general listings; for due/coming we'll sort by time explicitly
     return sorted(items, key=lambda x: parse_iso(x.get("when_iso","1970-01-01T00:00:00")), reverse=True)
 
 def _render_reminder_card(rec: Dict[str, Any], slno: int, is_caregiver: bool, key_prefix: str):
@@ -591,7 +549,6 @@ def _render_reminder_card(rec: Dict[str, Any], slno: int, is_caregiver: bool, ke
     st.markdown('</div>', unsafe_allow_html=True)  # .alzy-row
     st.markdown('</div>', unsafe_allow_html=True)  # .alzy-card
 
-
 def _render_due_and_coming(is_caregiver: bool, types: tuple = ("activity", "medicine"), scope: str = "scope"):
     """Render Due Now + Coming Soon for the given reminder types only."""
     now_ = now_local()
@@ -626,7 +583,6 @@ def _render_due_and_coming(is_caregiver: bool, types: tuple = ("activity", "medi
             for i, r in enumerate(upcoming, 1):
                 _render_reminder_card(r, i, is_caregiver, key_prefix=f"{scope}_soon_{t}")
 
-
 def _display_memory_book_gallery():
     imgs = get_memory_book_images()
     if not imgs:
@@ -642,26 +598,61 @@ def _display_memory_book_gallery():
             st.image(str(img_path), use_container_width=True)
             st.markdown('</div>', unsafe_allow_html=True)
 
-            # meta: prefer Person mapping
+            # meta: prefer Person mapping (resolve both sides)
             ap = os.path.abspath(resolve_path(str(img_path)))
-                person = next(
-                    (
-                        p for p in data["people"].values()
-                        if os.path.abspath(resolve_path(p.get("image_path",""))) == ap
-                    ),
-                    None
-                )
-
+            person = next(
+                (
+                    p for p in data["people"].values()
+                    if os.path.abspath(resolve_path(p.get("image_path",""))) == ap
+                ),
+                None
+            )
             if person:
                 display_name = person.get("name") or "Family"
                 display_rel  = person.get("relation") or "Family"
             else:
-                display_name = Path(img_path).stem.split("-", 1)[0].replace("-", " ").replace("_", " ").title()
+                stem = Path(img_path).stem
+                base = stem.split("-", 1)[0]
+                display_name = base.replace("-", " ").replace("_", " ").title() or "Family"
                 display_rel  = "Family"
 
             st.markdown(f"**Name:** {display_name}")
             st.markdown(f"**Relation:** {display_rel}")
             st.markdown('</div>', unsafe_allow_html=True)
+
+# ------------------------------------------------------------
+# LANDING (choose role)
+# ------------------------------------------------------------
+if st.session_state.role is None:
+    st.markdown("<h1 style='text-align:center;'>🧠 ALZY – Memory Assistant</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='text-align:center;'>Who are you?</p>", unsafe_allow_html=True)
+    c1, c2 = st.columns(2)
+    with c1:
+        if st.button("🧑‍🦽 Patient", use_container_width=True, key="choose_patient"):
+            st.session_state.role = "patient"; st.rerun()
+    with c2:
+        if st.button("🧑‍⚕️ Caregiver", use_container_width=True, key="choose_caregiver"):
+            st.session_state.role = "caretaker"; st.rerun()
+    st.stop()
+
+# ------------------------------------------------------------
+# COMMON HEADER
+# ------------------------------------------------------------
+st.title("🧠 ALZY – Memory Assistant")
+left, right = st.columns([4, 1])
+with left:
+    nm = data["profile"].get("name", "Friend")
+    if st.session_state.role == "caretaker":
+        new_nm = st.text_input("Patient / User name", value=nm)
+        if new_nm.strip() and new_nm != nm:
+            data["profile"]["name"] = new_nm.strip()
+            save_runtime_data(data)
+    else:
+        st.markdown(f"**Hello, {nm}!**")
+with right:
+    st.markdown(f"<span class='role-badge'>Current: {st.session_state.role.title()}</span>", unsafe_allow_html=True)
+    if st.button("🔁 Change role"):
+        st.session_state.role = None; st.rerun()
 
 # ------------------------------------------------------------
 # CAREGIVER VIEW
@@ -719,7 +710,6 @@ if st.session_state.role == "caretaker":
 
         st.divider()
         st.subheader("All reminders (latest first)")
-        # latest first by when_iso
         all_rems = sorted(
             list(data["reminders"].values()),
             key=lambda x: parse_iso(x.get("when_iso","1970-01-01T00:00:00")),
@@ -737,10 +727,9 @@ if st.session_state.role == "caretaker":
         if not ppl:
             st.info("No people added yet. Use the Memory Book tab to add photos.")
         else:
-            # latest first by file mtime when possible
             ppl_sorted = sorted(
                 ppl,
-                key=lambda p: _file_mtime_or_zero(Path(p.get("image_path",""))) * -1,
+                key=lambda p: _file_mtime_or_zero(Path(resolve_path(p.get("image_path","")))) * -1,
             )
             cols = st.columns(2)
             for i, p in enumerate(ppl_sorted):
@@ -861,7 +850,7 @@ else:
 
     # Medicine
     with tab_med:
-       _render_due_and_coming(is_caregiver=False, types=("medicine",), scope="pt_med")
+        _render_due_and_coming(is_caregiver=False, types=("medicine",), scope="pt_med")
 
     # Quiz (prefer due; fallback to all people synced from memory book)
     with tab_quiz:
@@ -890,9 +879,10 @@ else:
                 target = data["people"][st.session_state.quiz_target_id]
                 st.write("Who is this?")
                 ip = target.get("image_path", "")
-                if image_exists(ip): 
+                rp = resolve_path(ip)
+                if image_exists(ip):
                     st.markdown('<div class="alzy-thumb">', unsafe_allow_html=True)
-                    st.image(ip, use_container_width=True)
+                    st.image(rp, use_container_width=True)
                     st.markdown('</div>', unsafe_allow_html=True)
                 else:
                     st.markdown('<div class="noimg">No image</div>', unsafe_allow_html=True)
@@ -904,7 +894,7 @@ else:
                     with cols[i]:
                         if image_exists(p.get("image_path","")):
                             st.markdown('<div class="alzy-thumb">', unsafe_allow_html=True)
-                            st.image(p["image_path"], use_container_width=True)
+                            st.image(resolve_path(p["image_path"]), use_container_width=True)
                             st.markdown('</div>', unsafe_allow_html=True)
                         if st.button(f"{p['name']} — {p.get('relation','Family')}", key=f"ans_{p['id']}"):
                             correct = p["id"] == target["id"]
@@ -1025,6 +1015,3 @@ else:
                 """,
                 unsafe_allow_html=True,
             )
-
-
-
