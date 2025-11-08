@@ -569,7 +569,7 @@ def _render_due_and_coming(is_caregiver: bool, types: tuple = ("activity", "medi
     st.subheader("🔔 Due now")
     for label, t in sections:
         due = [r for r in _reminders_by_type(t) if reminder_due(r)]
-        st.markdown(f"**{label}**")
+       # st.markdown(f"**{label}**")
         if not due:
             st.info("Nothing due.")
         else:
@@ -578,7 +578,7 @@ def _render_due_and_coming(is_caregiver: bool, types: tuple = ("activity", "medi
                 _render_reminder_card(r, i, is_caregiver, key_prefix=f"{scope}_due_{t}")
 
     # COMING SOON (24h)
-    st.subheader("🟡 Coming soon (24h)")
+    st.subheader("🟡 Coming soon")
     horizon = now_ + dt.timedelta(hours=24)
     for label, t in sections:
         upcoming = []
@@ -586,7 +586,7 @@ def _render_due_and_coming(is_caregiver: bool, types: tuple = ("activity", "medi
             d = parse_iso(r["next_due_iso"])
             if now_ < d <= horizon:
                 upcoming.append(r)
-        st.markdown(f"**{label}**")
+       # st.markdown(f"**{label}**")
         if not upcoming:
             st.caption("No upcoming reminders.")
         else:
@@ -1024,6 +1024,7 @@ else:
                 """,
                 unsafe_allow_html=True,
             )
+
 
 
 
