@@ -14,6 +14,7 @@ import streamlit as st
 from PIL import Image  # noqa: F401
 import requests
 import streamlit.components.v1 as components
+from zoneinfo import ZoneInfo
 
 # ------------------------------------------------------------
 # PATHS (separate temp folders per feature)
@@ -27,16 +28,20 @@ UPLOAD_BASE.mkdir(parents=True, exist_ok=True)
 # Activity / Medicine / MemoryBook specific
 ACTIVITY_IMG_DIR = UPLOAD_BASE / "activity_images"
 MEDICINE_IMG_DIR = UPLOAD_BASE / "medicine_images"
-MBOOK_IMG_DIR    = UPLOAD_BASE / "memory_book_images"
-AUDIO_DIR        = UPLOAD_BASE / "audio"
+MBOOK_IMG_DIR = UPLOAD_BASE / "memory_book_images"
+AUDIO_DIR = UPLOAD_BASE / "audio"
 
 for p in (ACTIVITY_IMG_DIR, MEDICINE_IMG_DIR, MBOOK_IMG_DIR, AUDIO_DIR):
     p.mkdir(parents=True, exist_ok=True)
 
-# Data file
-DATA_FILE = PROJECT_ROOT / ".data_temp.json"
+# Data files
+DATA_FILE = PROJECT_ROOT / ".data_temp.json"  # runtime
+BASELINE_FILE = PROJECT_ROOT / "data.json"    # fixed seed committed in repo
 if not DATA_FILE.exists():
     DATA_FILE.write_text("{}", encoding="utf-8")
+
+# Timezone
+IST = ZoneInfo("Asia/Kolkata")
 
 # ------------------------------------------------------------
 # SAFE API KEY LOADING (works local + Streamlit Cloud)
@@ -65,23 +70,28 @@ def _load_api_key() -> str:
 OPENAI_API_KEY = _load_api_key()
 
 # ------------------------------------------------------------
-# HELPERS
+# HELPERS (IST aware)
 # ------------------------------------------------------------
 def now_local() -> datetime.datetime:
-    return datetime.datetime.now()
+    return datetime.datetime.now(IST)
 
 def parse_iso(ts: str) -> datetime.datetime:
     try:
-        return datetime.datetime.fromisoformat(ts)
+        dt = datetime.datetime.fromisoformat(ts)
+        if dt.tzinfo is None:
+            dt = dt.replace(tzinfo=IST)
+        return dt.astimezone(IST)
     except Exception:
         return now_local()
 
 def to_iso(dt: datetime.datetime) -> str:
-    return dt.replace(microsecond=0).isoformat()
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=IST)
+    return dt.astimezone(IST).replace(microsecond=0).isoformat()
 
 def human_time(dt_iso: str) -> str:
     try:
-        dt = parse_iso(dt_iso)
+        dt = parse_iso(dt_iso).astimezone(IST)
         return dt.strftime("%d %b %Y • %I:%M %p")
     except Exception:
         return dt_iso
@@ -93,21 +103,53 @@ def default_data() -> Dict[str, Any]:
         "people": {},
         "logs": [],
         "gps": {"home_address": "", "lat": "", "lon": ""},
+        "memory_book_images": [],
     }
 
+def _safe_load_json(path: Path) -> Dict[str, Any]:
+    if not path.exists():
+        return {}
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
+
+def _merge_maps(a: Dict[str, Any], b: Dict[str, Any]) -> Dict[str, Any]:
+    out = {**a, **b}
+    return out
+
+def _merge_lists(a: List[Any], b: List[Any]) -> List[Any]:
+    return list(a or []) + list(b or [])
+
 def load_data() -> Dict[str, Any]:
-    if DATA_FILE.exists():
-        try:
-            data = json.loads(DATA_FILE.read_text(encoding="utf-8"))
-        except Exception:
-            data = default_data()
-    else:
-        data = default_data()
-    data.setdefault("profile", {"name": "Friend"})
-    data.setdefault("reminders", {})
-    data.setdefault("people", {})
-    data.setdefault("logs", [])
-    data.setdefault("gps", {"home_address": "", "lat": "", "lon": ""})
+    base = _safe_load_json(BASELINE_FILE)
+    rt = _safe_load_json(DATA_FILE)
+
+    # Ensure keys
+    for d in (base, rt):
+        d.setdefault("profile", {"name": "Friend"})
+        d.setdefault("reminders", {})
+        d.setdefault("people", {})
+        d.setdefault("logs", [])
+        d.setdefault("gps", {"home_address": "", "lat": "", "lon": ""})
+        d.setdefault("memory_book_images", [])
+
+    profile = _merge_maps(base["profile"], rt["profile"])
+    gps = _merge_maps(base["gps"], rt["gps"])
+    # runtime wins on conflicts
+    reminders = {**base["reminders"], **rt["reminders"]}
+    people = {**base["people"], **rt["people"]}
+    logs = _merge_lists(base["logs"], rt["logs"])
+    mbook = list(dict.fromkeys(base.get("memory_book_images", []) + rt.get("memory_book_images", [])))
+
+    data = {
+        "profile": profile,
+        "reminders": reminders,
+        "people": people,
+        "logs": logs,
+        "gps": gps,
+        "memory_book_images": mbook,
+    }
     return data
 
 def save_data(data: Dict[str, Any]) -> None:
@@ -217,30 +259,69 @@ def add_log(data: Dict[str, Any], reminder: Dict[str, Any], action: str):
     )
     save_data(data)
 
-# IMPORTANT: we KEEP the original name, but make it read ONLY from Memory Book folder
-def get_memory_book_images() -> List[Path]:
-    if not MBOOK_IMG_DIR.exists():
-        return []
-    exts = ("*.jpg", "*.jpeg", "*.png", "*.gif", "*.webp")
-    files: List[Path] = []
-    for ext in exts:
-        files.extend(MBOOK_IMG_DIR.rglob(ext))
-    return sorted(files)
+# ------------------- Memory Book helpers --------------------
+def _norm(p: str) -> str:
+    try:
+        return os.path.abspath(p).replace("\\", "/")
+    except Exception:
+        return p
 
-# Import Memory Book photos as People (for quiz). Kept separate helper.
+def friendly_name_from_filename(p: Path) -> str:
+    base = p.stem.replace("_", " ")
+    bits = [b for b in base.split("-") if b and not all(c in "0123456789abcdef" for c in b.lower())]
+    if bits:
+        base = " ".join(bits)
+    base = base.strip()
+    return base.title() if base else "Family"
+
+def find_person_by_image_path(data: Dict[str, Any], img_path: Path) -> Optional[Dict[str, Any]]:
+    target = _norm(str(img_path))
+    for person in data.get("people", {}).values():
+        pp = person.get("image_path", "")
+        if _norm(pp) == target:
+            return person
+    return None
+
+def get_memory_book_images(data: Dict[str, Any]) -> List[Path]:
+    """Return images from temp folder + baseline list in data.json (relative to repo)."""
+    imgs: List[Path] = []
+
+    # Temp dir files
+    if MBOOK_IMG_DIR.exists():
+        for ext in ("*.jpg", "*.jpeg", "*.png", "*.gif", "*.webp"):
+            imgs.extend(sorted(MBOOK_IMG_DIR.rglob(ext)))
+
+    # Baseline list (relative or absolute)
+    for rel in data.get("memory_book_images", []):
+        p = Path(rel)
+        if not p.is_absolute():
+            p = (PROJECT_ROOT / rel).resolve()
+        if p.exists() and p.suffix.lower() in {".jpg", ".jpeg", ".png", ".gif", ".webp"}:
+            imgs.append(p)
+
+    # Deduplicate while preserving order
+    out: List[Path] = []
+    seen = set()
+    for x in imgs:
+        nx = _norm(str(x))
+        if nx not in seen:
+            seen.add(nx)
+            out.append(x)
+    return out
+
 def ensure_people_from_memory_book(data: Dict[str, Any], force_due: bool = False) -> int:
-    imgs = get_memory_book_images()
+    imgs = get_memory_book_images(data)
     if not imgs:
         return 0
     existing_paths = {
-        os.path.abspath(p.get("image_path", "")) for p in data["people"].values() if p.get("image_path")
+        _norm(p.get("image_path", "")) for p in data["people"].values() if p.get("image_path")
     }
     added = 0
     for img_path in imgs:
-        ap = os.path.abspath(str(img_path))
+        ap = _norm(str(img_path))
         if ap in existing_paths:
             continue
-        name_guess = img_path.stem.replace("_", " ").title()
+        name_guess = friendly_name_from_filename(img_path)
         pid = uuid.uuid4().hex
         person = {
             "id": pid,
@@ -410,23 +491,36 @@ if st.session_state.role == "caretaker":
                 c1, c2 = st.columns([1, 2])
                 with c1:
                     ip = r.get("image_path", "")
-                    if ip and os.path.exists(ip): st.image(ip, use_container_width=True)
-                    else: st.image("https://via.placeholder.com/512x320?text=Photo", use_container_width=True)
+                    if ip and os.path.exists(ip):
+                        st.image(ip, width=220)
+                    else:
+                        st.image("https://via.placeholder.com/360x220?text=Photo", width=220)
                 with c2:
-                    st.markdown(f"**{r['title']}**  <span class='alzy-chip'>{r.get('reminder_type','activity')}</span>", unsafe_allow_html=True)
+                    st.markdown(
+                        f"**{r['title']}**  <span class='alzy-chip'>{r.get('reminder_type','activity')}</span>",
+                        unsafe_allow_html=True,
+                    )
                     st.caption(f"Next: {human_time(r['next_due_iso'])}")
+                    aud = r.get("audio_path", "")
+                    if aud and os.path.exists(aud):
+                        try:
+                            st.audio(aud, format="audio/mp3")
+                        except Exception:
+                            st.caption("Audio file present but could not be played.")
                     for i, s in enumerate(r.get("steps", []), 1):
                         st.write(f"{i}. {s}")
-                    b1, b2, b3 = st.columns(3)
-                    if b1.button("✅ Done", key=f"cg_done_{r['id']}"):
-                        advance_reminder(r); 
-                        if r.get("reminder_type") == "medicine": add_log(data, r, "taken (caregiver)")
+                    c_done, c_snooze, c_rm = st.columns(3)
+                    if c_done.button("✅ Done", key=f"cg_done_{r['id']}"):
+                        advance_reminder(r)
+                        if r.get("reminder_type") == "medicine":
+                            add_log(data, r, "taken (caregiver)")
                         save_data(data); st.rerun()
-                    if b2.button("⏰ Snooze", key=f"cg_snooze_{r['id']}"):
-                        snooze_reminder(r); 
-                        if r.get("reminder_type") == "medicine": add_log(data, r, "snoozed (caregiver)")
+                    if c_snooze.button("⏰ Snooze", key=f"cg_snooze_{r['id']}"):
+                        snooze_reminder(r, minutes=10)
+                        if r.get("reminder_type") == "medicine":
+                            add_log(data, r, "snoozed (caregiver)")
                         save_data(data); st.rerun()
-                    if b3.button("🗑️ Remove", key=f"cg_rm_{r['id']}"):
+                    if c_rm.button("🗑️ Remove", key=f"cg_rm_{r['id']}"):
                         data["reminders"].pop(r["id"], None); save_data(data); st.rerun()
                 st.markdown("</div>", unsafe_allow_html=True)
 
@@ -435,7 +529,8 @@ if st.session_state.role == "caretaker":
         now_ = now_local()
         for r in data["reminders"].values():
             dt = parse_iso(r["next_due_iso"])
-            if now_ < dt <= now_ + datetime.timedelta(hours=24): upcoming.append(r)
+            if now_ < dt <= now_ + datetime.timedelta(hours=24):
+                upcoming.append(r)
         if not upcoming:
             st.caption("No upcoming reminders.")
         else:
@@ -456,9 +551,10 @@ if st.session_state.role == "caretaker":
             time_options = [f"{h:02d}:{m:02d}" for h in range(24) for m in range(0, 60, 5)]
             now_dt = now_local()
             default_time_str = f"{now_dt.hour:02d}:{(now_dt.minute//5)*5:02d}"
-            if default_time_str not in time_options: default_time_str = "23:55"
+            if default_time_str not in time_options:
+                default_time_str = "23:55"
             time_str = st.selectbox("Time", options=time_options, index=time_options.index(default_time_str))
-            t = datetime.time(int(time_str[:2]), int(time_str[3:]))
+            t = datetime.time(int(time_str[:2]), int(time_str[3:]), tzinfo=IST)
 
             img_up = st.file_uploader("Photo", type=["png", "jpg", "jpeg"])
             aud_up = st.file_uploader("Voice cue", type=["mp3", "wav", "m4a"])
@@ -470,7 +566,7 @@ if st.session_state.role == "caretaker":
                 if not title:
                     st.error("Title required")
                 else:
-                    when_dt = datetime.datetime.combine(d, t)
+                    when_dt = datetime.datetime.combine(d, t, tzinfo=IST)
                     # Save image in the correct folder
                     if img_up:
                         if rtype == "medicine":
@@ -489,6 +585,12 @@ if st.session_state.role == "caretaker":
         for r in sorted(data["reminders"].values(), key=lambda x: x["next_due_iso"]):
             with st.expander(f"{r['title']} — {human_time(r['next_due_iso'])}"):
                 st.json(r)
+                ip = r.get("image_path", "")
+                if ip and os.path.exists(ip):
+                    st.image(ip, width=160)
+                aud = r.get("audio_path", "")
+                if aud and os.path.exists(aud):
+                    st.audio(aud, format="audio/mp3")
 
     # PEOPLE (list only; add via Memory Book)
     with tab_people:
@@ -500,7 +602,8 @@ if st.session_state.role == "caretaker":
             for i, p in enumerate(data["people"].values()):
                 with cols[i % 2]:
                     ip = p.get("image_path", "")
-                    if ip and os.path.exists(ip): st.image(ip, use_container_width=True)
+                    if ip and os.path.exists(ip):
+                        st.image(ip, width=220)
                     st.markdown(f"**{p['name']}** — {p.get('relation','Family')}")
 
     # LOGS
@@ -573,7 +676,7 @@ if st.session_state.role == "caretaker":
     # MEMORY BOOK (uploads saved ONLY to MBOOK_IMG_DIR)
     with tab_mbook:
         st.subheader("📘 Memory Book")
-        st.caption(f"Folder: {MBOOK_IMG_DIR.resolve()}")
+        st.caption(f"Folder (temp): {MBOOK_IMG_DIR.resolve()}  •  Baseline: data.json memory_book_images")
         with st.form("add_person_form", clear_on_submit=True):
             name = st.text_input("Name")
             rel = st.text_input("Relation", value="Family")
@@ -584,24 +687,26 @@ if st.session_state.role == "caretaker":
                     st.error("Please select a photo.")
                 else:
                     pth = save_upload_to(img_up, MBOOK_IMG_DIR)
-                    # If a name was given, store as a Person immediately (helps quiz)
+                    # If a name was given, store as a Person immediately (helps quiz + naming)
                     if name.strip():
                         add_person(data, name.strip(), rel.strip() or "Family", pth)
                     st.success("Saved.")
 
-        imgs = get_memory_book_images()
+        imgs = get_memory_book_images(data)
         if not imgs:
             st.info("No images found yet. Add photos above.")
         else:
             for img_path in imgs:
                 c1, c2 = st.columns([1, 2])
-                c1.image(str(img_path), use_container_width=True)
-                name_guess = img_path.stem.replace("_", " ").title()
+                c1.image(str(img_path), width=220)
+                person = find_person_by_image_path(data, img_path)
+                display_name = person["name"] if person else friendly_name_from_filename(img_path)
+                display_rel = person["relation"] if person else "Family"
                 c2.markdown(
                     f"""
 <div class="alzy-card">
-  <div class="mb-2"><strong>Name:</strong> {name_guess}</div>
-  <div class="mb-1"><strong>Relation:</strong> Family</div>
+  <div class="mb-2"><strong>Name:</strong> {display_name}</div>
+  <div class="mb-1"><strong>Relation:</strong> {display_rel}</div>
   <div class="mb-1"><span class="alzy-chip">Memory Book</span></div>
 </div>
 """,
@@ -629,31 +734,45 @@ else:
                 c1, c2 = st.columns([1, 2])
                 with c1:
                     ip = r.get("image_path", "")
-                    if ip and os.path.exists(ip): st.image(ip, use_container_width=True)
-                    else: st.image("https://via.placeholder.com/512x320?text=Photo", use_container_width=True)
+                    if ip and os.path.exists(ip):
+                        st.image(ip, width=220)
+                    else:
+                        st.image("https://via.placeholder.com/360x220?text=Photo", width=220)
                 with c2:
                     st.markdown(f"**{r['title']}**")
                     st.caption(human_time(r["next_due_iso"]))
+                    aud = r.get("audio_path", "")
+                    if aud and os.path.exists(aud):
+                        try:
+                            st.audio(aud, format="audio/mp3")
+                        except Exception:
+                            st.caption("Audio file present but could not be played.")
                     for i, s in enumerate(r.get("steps", []), 1):
                         st.write(f"{i}. {s}")
-                    b1, b2 = st.columns(2)
-                    if b1.button("✅ I did it", key=f"pt_done_{rem_type}_{r['id']}"):
-                        advance_reminder(r); 
-                        if rem_type == "medicine": add_log(data, r, "taken (patient)")
+                    c_done, c_snooze, c_rm = st.columns(3)
+                    if c_done.button("✅ Done", key=f"pt_done_{rem_type}_{r['id']}"):
+                        advance_reminder(r)
+                        if rem_type == "medicine":
+                            add_log(data, r, "taken (patient)")
                         save_data(data); st.rerun()
-                    if b2.button("⏰ Later", key=f"pt_snooze_{rem_type}_{r['id']}"):
-                        snooze_reminder(r); 
-                        if rem_type == "medicine": add_log(data, r, "snoozed (patient)")
+                    if c_snooze.button("⏰ Snooze", key=f"pt_snooze_{rem_type}_{r['id']}"):
+                        snooze_reminder(r, minutes=10)
+                        if rem_type == "medicine":
+                            add_log(data, r, "snoozed (patient)")
                         save_data(data); st.rerun()
+                    if c_rm.button("🗑️ Remove", key=f"pt_rm_{rem_type}_{r['id']}"):
+                        data["reminders"].pop(r["id"], None); save_data(data); st.rerun()
                 st.markdown("</div>", unsafe_allow_html=True)
 
         st.subheader("🟡 Coming soon")
         upcoming = []
         now_ = now_local()
         for r in data["reminders"].values():
-            if r.get("reminder_type","activity") != rem_type: continue
+            if r.get("reminder_type","activity") != rem_type:
+                continue
             dt = parse_iso(r["next_due_iso"])
-            if now_ < dt <= now_ + datetime.timedelta(hours=24): upcoming.append(r)
+            if now_ < dt <= now_ + datetime.timedelta(hours=24):
+                upcoming.append(r)
         if not upcoming:
             st.caption("No upcoming reminders.")
         else:
@@ -671,30 +790,25 @@ else:
     with tab_med:
         render_patient_tab("medicine")
 
-    # Quiz (GENERATE ONLY FROM MEMORY BOOK)
+    # Quiz (GENERATE FROM MEMORY BOOK; fallback to all people if none due)
     with tab_quiz:
         st.subheader("🧩 Face quiz")
         if "quiz_target_id" not in st.session_state:
             st.session_state.quiz_target_id = None
             st.session_state.quiz_option_ids = []
 
-        # Ensure memory-book images are represented as People
-        if not data["people"]:
-            ensure_people_from_memory_book(data, force_due=True)
+        # Ensure Memory Book images exist as People; do not force due here
+        ensure_people_from_memory_book(data, force_due=False)
         due = get_due_people(data)
-
-        # If nothing due, force newly imported to due-now
-        if not due:
-            added = ensure_people_from_memory_book(data, force_due=True)
-            due = get_due_people(data)
+        pool = due if due else list(data.get("people", {}).values())
 
         if not data["people"]:
             st.info("No Memory Book images found. Please add some in the Memory Book tab.")
-        elif not due:
-            st.success("All set! People exist, but nothing is due right now. We'll nudge you later.")
+        elif not pool:
+            st.info("No people available for quiz yet.")
         else:
             if st.session_state.quiz_target_id is None:
-                target = random.choice(due)
+                target = random.choice(pool)
                 others = [p for p in data["people"].values() if p["id"] != target["id"]]
                 random.shuffle(others); others = others[:2]
                 st.session_state.quiz_target_id = target["id"]
@@ -704,8 +818,10 @@ else:
                 target = data["people"][st.session_state.quiz_target_id]
                 st.write("Who is this?")
                 ip = target.get("image_path", "")
-                if ip and os.path.exists(ip): st.image(ip, use_container_width=True)
-                else: st.image("https://via.placeholder.com/512x320?text=Photo", use_container_width=True)
+                if ip and os.path.exists(ip):
+                    st.image(ip, width=220)
+                else:
+                    st.image("https://via.placeholder.com/360x220?text=Photo", width=220)
 
                 opts = [data["people"][pid] for pid in st.session_state.quiz_option_ids if pid in data["people"]]
                 random.shuffle(opts)
@@ -713,7 +829,7 @@ else:
                 for i, p in enumerate(opts):
                     with cols[i]:
                         if p.get("image_path") and os.path.exists(p["image_path"]):
-                            st.image(p["image_path"], use_container_width=True)
+                            st.image(p["image_path"], width=160)
                         if st.button(f"{p['name']} — {p['relation']}", key=f"ans_{p['id']}"):
                             correct = p["id"] == target["id"]
                             mark_quiz_result(data, target["id"], correct)
@@ -722,23 +838,25 @@ else:
                             st.session_state.quiz_option_ids = []
                             st.rerun()
 
-    # Memory Book (patient view – read-only gallery)
+    # Memory Book (patient view – read-only gallery, names fixed)
     with tab_mbook:
         st.subheader("📘 Memory Book")
-        st.caption(f"Folder: {MBOOK_IMG_DIR.resolve()}")
-        imgs = get_memory_book_images()
+        st.caption(f"Folder (temp): {MBOOK_IMG_DIR.resolve()}  •  Baseline: data.json memory_book_images")
+        imgs = get_memory_book_images(data)
         if not imgs:
             st.info("No images yet.")
         else:
             for img_path in imgs:
                 c1, c2 = st.columns([1, 2])
-                c1.image(str(img_path), use_container_width=True)
-                name_guess = img_path.stem.replace("_", " ").title()
+                c1.image(str(img_path), width=220)
+                person = find_person_by_image_path(data, img_path)
+                display_name = person["name"] if person else friendly_name_from_filename(img_path)
+                display_rel = person["relation"] if person else "Family"
                 c2.markdown(
                     f"""
 <div class="alzy-card">
-  <div class="mb-2"><strong>Name:</strong> {name_guess}</div>
-  <div class="mb-1"><strong>Relation:</strong> Family</div>
+  <div class="mb-2"><strong>Name:</strong> {display_name}</div>
+  <div class="mb-1"><strong>Relation:</strong> {display_rel}</div>
   <div class="mb-1"><span class="alzy-chip">Memory Book</span></div>
 </div>
 """,
