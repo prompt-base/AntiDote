@@ -1,1 +1,184 @@
-{}
+{
+  "profile": { "name": "Friend" },
+  "gps": {
+    "home_address": "Garia, Kolkata, West Bengal",
+    "lat": "22.4660129",
+    "lon": "88.3928446"
+  },
+  "reminders": {
+    "act-01-7a6b1b2c3d4e5f60718293aa": {
+      "id": "act-01-7a6b1b2c3d4e5f60718293aa",
+      "title": "Let’s take a calm morning walk now while the air is cool and the streets are quiet.",
+      "when_iso": "2025-11-08T07:30:00",
+      "next_due_iso": "2025-11-08T07:30:00",
+      "repeat_rule": "daily",
+      "stage": 1,
+      "image_path": "uploads/images/activity-morning-walk.png",
+      "audio_path": "uploads/audio/activity-morning-walk.mp3",
+      "steps": ["Put on comfortable shoes", "Carry a small bottle of water", "Walk at an easy pace for 15 minutes"],
+      "reminder_type": "activity"
+    },
+    "act-02-7a6b1b2c3d4e5f60718293bb": {
+      "id": "act-02-7a6b1b2c3d4e5f60718293bb",
+      "title": "Please take a short hydration break—sip water slowly and notice how refreshed you feel.",
+      "when_iso": "2025-11-08T12:30:00",
+      "next_due_iso": "2025-11-08T12:30:00",
+      "repeat_rule": "daily",
+      "stage": 1,
+      "image_path": "uploads/images/activity-hydration-break.png",
+      "audio_path": "uploads/audio/activity-hydration-break.mp3",
+      "steps": ["Fill your glass", "Take small sips for one minute", "Relax your shoulders and take a gentle breath"],
+      "reminder_type": "activity"
+    },
+    "act-03-7a6b1b2c3d4e5f60718293cc": {
+      "id": "act-03-7a6b1b2c3d4e5f60718293cc",
+      "title": "This evening, breathe in softly and exhale slowly to help your body feel safe and relaxed.",
+      "when_iso": "2025-11-08T18:00:00",
+      "next_due_iso": "2025-11-08T18:00:00",
+      "repeat_rule": "daily",
+      "stage": 1,
+      "image_path": "uploads/images/activity-evening-breathing.png",
+      "audio_path": "uploads/audio/activity-evening-breathing.mp3",
+      "steps": ["Sit comfortably", "Inhale for 4 counts", "Exhale for 6 counts (repeat 6 times)"],
+      "reminder_type": "activity"
+    },
+    "act-04-7a6b1b2c3d4e5f60718293dd": {
+      "id": "act-04-7a6b1b2c3d4e5f60718293dd",
+      "title": "Before bed, write one kind thought in your journal to end the day gently and peacefully.",
+      "when_iso": "2025-11-08T21:30:00",
+      "next_due_iso": "2025-11-08T21:30:00",
+      "repeat_rule": "daily",
+      "stage": 1,
+      "image_path": "uploads/images/activity-gratitude-journal.png",
+      "audio_path": "uploads/audio/activity-gratitude-journal.mp3",
+      "steps": ["Open your journal", "Write one good thing about today", "Close your eyes and take one calm breath"],
+      "reminder_type": "activity"
+    },
+
+    "med-01-8b7c6d5e4f3a2b1098a7c6d5": {
+      "id": "med-01-8b7c6d5e4f3a2b1098a7c6d5",
+      "title": "Please take your blood pressure tablet now, after breakfast, with a full glass of water.",
+      "when_iso": "2025-11-08T08:30:00",
+      "next_due_iso": "2025-11-08T08:30:00",
+      "repeat_rule": "daily",
+      "stage": 1,
+      "image_path": "uploads/images/med-bp-tablet.png",
+      "audio_path": "uploads/audio/med-bp-tablet.mp3",
+      "steps": ["Sit upright", "Take 1 tablet", "Drink a full glass of water"],
+      "reminder_type": "medicine"
+    },
+    "med-02-8b7c6d5e4f3a2b1098a7c6e6": {
+      "id": "med-02-8b7c6d5e4f3a2b1098a7c6e6",
+      "title": "It’s time for your Vitamin D supplement—take one now to keep your bones strong and steady.",
+      "when_iso": "2025-11-08T13:00:00",
+      "next_due_iso": "2025-11-08T13:00:00",
+      "repeat_rule": "daily",
+      "stage": 1,
+      "image_path": "uploads/images/med-vitamin-d.png",
+      "audio_path": "uploads/audio/med-vitamin-d.mp3",
+      "steps": ["Take 1 softgel", "Have a light snack if needed", "Sit for a moment and breathe"],
+      "reminder_type": "medicine"
+    },
+    "med-03-8b7c6d5e4f3a2b1098a7c6f7": {
+      "id": "med-03-8b7c6d5e4f3a2b1098a7c6f7",
+      "title": "Please take your thyroid tablet now with water, on an empty stomach, for the best effect.",
+      "when_iso": "2025-11-09T06:30:00",
+      "next_due_iso": "2025-11-09T06:30:00",
+      "repeat_rule": "daily",
+      "stage": 1,
+      "image_path": "uploads/images/med-thyroid.png",
+      "audio_path": "uploads/audio/med-thyroid.mp3",
+      "steps": ["Take 1 tablet", "Avoid food for 30 minutes", "Set a gentle alarm for tomorrow"],
+      "reminder_type": "medicine"
+    },
+    "med-04-8b7c6d5e4f3a2b1098a7c601": {
+      "id": "med-04-8b7c6d5e4f3a2b1098a7c601",
+      "title": "Gently use your evening eye drops now and blink softly so your eyes feel comfortable.",
+      "when_iso": "2025-11-08T20:30:00",
+      "next_due_iso": "2025-11-08T20:30:00",
+      "repeat_rule": "daily",
+      "stage": 1,
+      "image_path": "uploads/images/med-eye-drops.png",
+      "audio_path": "uploads/audio/med-eye-drops.mp3",
+      "steps": ["Wash hands", "Tilt head back", "Put one drop in each eye"],
+      "reminder_type": "medicine"
+    }
+  },
+  "people": {
+    "p-50m-rajiv-menon": {
+      "id": "p-50m-rajiv-menon",
+      "name": "Rajiv Menon",
+      "relation": "Family",
+      "image_path": "uploads/images/male-50-rajiv-menon.png",
+      "stage": 1,
+      "next_due_iso": "2025-11-10T09:00:00"
+    },
+    "p-50f-anita-sen": {
+      "id": "p-50f-anita-sen",
+      "name": "Anita Sen",
+      "relation": "Family",
+      "image_path": "uploads/images/female-50-anita-sen.png",
+      "stage": 1,
+      "next_due_iso": "2025-11-10T09:00:00"
+    },
+    "p-27m-arjun-sharma": {
+      "id": "p-27m-arjun-sharma",
+      "name": "Arjun Sharma",
+      "relation": "Family",
+      "image_path": "uploads/images/male-27-arjun-sharma.png",
+      "stage": 1,
+      "next_due_iso": "2025-11-10T09:00:00"
+    },
+    "p-24m-ravi-das": {
+      "id": "p-24m-ravi-das",
+      "name": "Ravi Das",
+      "relation": "Family",
+      "image_path": "uploads/images/male-24-ravi-das.png",
+      "stage": 1,
+      "next_due_iso": "2025-11-10T09:00:00"
+    },
+    "p-29m-veer-singh": {
+      "id": "p-29m-veer-singh",
+      "name": "Veer Singh",
+      "relation": "Family",
+      "image_path": "uploads/images/male-29-veer-singh.png",
+      "stage": 1,
+      "next_due_iso": "2025-11-10T09:00:00"
+    },
+    "p-22f-nisha-kapoor": {
+      "id": "p-22f-nisha-kapoor",
+      "name": "Nisha Kapoor",
+      "relation": "Family",
+      "image_path": "uploads/images/female-22-nisha-kapoor.png",
+      "stage": 1,
+      "next_due_iso": "2025-11-10T09:00:00"
+    },
+    "p-25f-isha-roy": {
+      "id": "p-25f-isha-roy",
+      "name": "Isha Roy",
+      "relation": "Family",
+      "image_path": "uploads/images/female-25-isha-roy.png",
+      "stage": 1,
+      "next_due_iso": "2025-11-10T09:00:00"
+    },
+    "p-28f-rita-dutta": {
+      "id": "p-28f-rita-dutta",
+      "name": "Rita Dutta",
+      "relation": "Family",
+      "image_path": "uploads/images/female-28-rita-dutta.png",
+      "stage": 1,
+      "next_due_iso": "2025-11-10T09:00:00"
+    }
+  },
+  "memory_book_images": [
+    "uploads/images/male-50-rajiv-menon.png",
+    "uploads/images/female-50-anita-sen.png",
+    "uploads/images/male-27-arjun-sharma.png",
+    "uploads/images/male-24-ravi-das.png",
+    "uploads/images/male-29-veer-singh.png",
+    "uploads/images/female-22-nisha-kapoor.png",
+    "uploads/images/female-25-isha-roy.png",
+    "uploads/images/female-28-rita-dutta.png"
+  ],
+  "logs": []
+}
