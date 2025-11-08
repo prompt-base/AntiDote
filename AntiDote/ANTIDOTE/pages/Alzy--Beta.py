@@ -500,7 +500,7 @@ def _render_thumb(path: str):
     rp = resolve_path(path)
     if image_exists(path):
         st.markdown('<div class="alzy-thumb">', unsafe_allow_html=True)
-        st.image(rp, use_container_width=True)
+        st.image(rp, width=140)
         st.markdown('</div>', unsafe_allow_html=True)
     else:
         st.markdown('<div class="noimg">No image</div>', unsafe_allow_html=True)
@@ -607,7 +607,7 @@ def _display_memory_book_gallery():
             st.markdown('<div class="alzy-card">', unsafe_allow_html=True)
             # image
             st.markdown('<div class="alzy-thumb">', unsafe_allow_html=True)
-            st.image(str(img_path), use_container_width=True)
+            st.image(str(img_path), width=140)
             st.markdown('</div>', unsafe_allow_html=True)
 
             # meta: prefer Person mapping (resolve both sides)
@@ -640,10 +640,10 @@ if st.session_state.role is None:
     st.markdown("<p style='text-align:center;'>Who are you?</p>", unsafe_allow_html=True)
     c1, c2 = st.columns(2)
     with c1:
-        if st.button("🧑‍🦽 Patient", use_container_width=True, key="choose_patient"):
+        if st.button("🧑‍🦽 Patient", width=140, key="choose_patient"):
             st.session_state.role = "patient"; st.rerun()
     with c2:
-        if st.button("🧑‍⚕️ Caregiver", use_container_width=True, key="choose_caregiver"):
+        if st.button("🧑‍⚕️ Caregiver", width=140, key="choose_caregiver"):
             st.session_state.role = "caretaker"; st.rerun()
     st.stop()
 
@@ -894,7 +894,7 @@ else:
                 rp = resolve_path(ip)
                 if image_exists(ip):
                     st.markdown('<div class="alzy-thumb">', unsafe_allow_html=True)
-                    st.image(rp, use_container_width=True)
+                    st.image(rp, width=140)
                     st.markdown('</div>', unsafe_allow_html=True)
                 else:
                     st.markdown('<div class="noimg">No image</div>', unsafe_allow_html=True)
@@ -906,7 +906,7 @@ else:
                     with cols[i]:
                         if image_exists(p.get("image_path","")):
                             st.markdown('<div class="alzy-thumb">', unsafe_allow_html=True)
-                            st.image(resolve_path(p["image_path"]), use_container_width=True)
+                            st.image(resolve_path(p["image_path"]), width=140)
                             st.markdown('</div>', unsafe_allow_html=True)
                         if st.button(f"{p['name']} — {p.get('relation','Family')}", key=f"ans_{p['id']}"):
                             correct = p["id"] == target["id"]
@@ -1027,6 +1027,7 @@ else:
                 """,
                 unsafe_allow_html=True,
             )
+
 
 
 
