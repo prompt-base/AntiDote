@@ -26,8 +26,8 @@ except Exception:
 # ------------------------------------------------------------
 PROJECT_DIR = Path(__file__).parent                   # ANTIDOTE/pages
 APP_DIR = PROJECT_DIR.parent                          # ANTIDOTE
-REPO_ROOT = APP_DIR.parent                            # repo root (where data.json & uploads live)
-
+REPO_ROOT = APP_DIR                                   # project root (where data.json & uploads live
+                           
 # Base scratch area for runtime uploads
 UPLOAD_BASE = Path("/tmp/alzy_uploads")
 UPLOAD_BASE.mkdir(parents=True, exist_ok=True)
@@ -115,16 +115,19 @@ def human_time(dt_iso: str) -> str:
 def resolve_path(p: str) -> str:
     """Return absolute path for media:
     - absolute path => unchanged if exists
-    - repo-relative (e.g., 'uploads/images/...') => resolve from REPO_ROOT
+    - relative (e.g., 'uploads/images/...') => try REPO_ROOT, APP_DIR, PROJECT_DIR
     - otherwise return original
     """
     if not p:
         return ""
+    # absolute and exists
     if os.path.isabs(p) and os.path.exists(p):
         return p
-    candidate = (REPO_ROOT / p).resolve()
-    if os.path.exists(candidate):
-        return str(candidate)
+    # try common bases
+    for base in (REPO_ROOT, APP_DIR, PROJECT_DIR):
+        candidate = (base / p).resolve()
+        if os.path.exists(candidate):
+            return str(candidate)
     return p
 
 def image_exists(path: str) -> bool:
@@ -336,10 +339,10 @@ def get_memory_book_images() -> List[Path]:
 
     # Baseline-declared images (repo paths are relative to REPO_ROOT)
     baseline_paths = st.session_state.data.get("memory_book_images", [])
-    for rel in baseline_paths:
-        p = (REPO_ROOT / rel).resolve()
-        if p.exists():
-            imgs.append(p)
+for rel in baseline_paths:
+    p = Path(resolve_path(rel)).resolve()
+    if p.exists():
+        imgs.append(p)
 
     # Runtime uploaded images
     if MBOOK_IMG_DIR.exists():
@@ -1015,3 +1018,4 @@ else:
                 """,
                 unsafe_allow_html=True,
             )
+
