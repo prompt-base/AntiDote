@@ -499,9 +499,8 @@ if qp_role in ("patient", "caretaker"):
 def _render_thumb(path: str):
     rp = resolve_path(path)
     if image_exists(path):
-        st.markdown('<div class="alzy-thumb">', unsafe_allow_html=True)
+        # Render the image directly; no HTML wrapper so we don't leave an empty div
         st.image(rp, width=140)
-        st.markdown('</div>', unsafe_allow_html=True)
     else:
         st.markdown('<div class="noimg">No image</div>', unsafe_allow_html=True)
 
@@ -1025,6 +1024,7 @@ else:
                 """,
                 unsafe_allow_html=True,
             )
+
 
 
 
