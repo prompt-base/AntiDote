@@ -436,11 +436,20 @@ st.markdown(
       background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.025));
       border:1px solid var(--border); border-radius:14px; padding:12px 14px; box-shadow: 0 12px 28px rgba(0,0,0,.25); margin-bottom:10px;
     }
-    .alzy-row { display:flex; gap:14px; align-items:flex-start; }
+    .alzy-row { display:flex; gap:10px; align-items:flex-start; }
     .alzy-thumb {
-      width: 180px; height: 130px; border-radius:12px; overflow:hidden; border:1px solid var(--border); flex: 0 0 auto;
-    }
-    .alzy-thumb img { width:100%; height:100%; object-fit:cover; display:block; }
+  width: 140px; height: 105px; border-radius:12px; overflow:hidden; border:1px solid var(--border); flex: 0 0 auto;
+}
+.alzy-thumb img { width:100%; height:100%; object-fit:cover; display:block; }
+
+/* Make thumbs even smaller on narrow screens; slightly larger on wide screens */
+@media (max-width: 640px) {
+  .alzy-thumb { width: 120px; height: 90px; }
+}
+@media (min-width: 1400px) {
+  .alzy-thumb { width: 160px; height: 120px; }
+}
+
     .alzy-meta { flex: 1 1 auto; min-width: 0; }
     .alzy-actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
     .chip { display:inline-block; padding:2px 8px; font-size:.75rem; border-radius:999px; border:1px solid var(--border); color:var(--muted); }
@@ -1018,5 +1027,6 @@ else:
                 """,
                 unsafe_allow_html=True,
             )
+
 
 
