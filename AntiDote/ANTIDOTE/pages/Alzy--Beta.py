@@ -517,48 +517,51 @@ def _reminders_by_type(rem_type: str) -> List[Dict[str, Any]]:
     return sorted(items, key=lambda x: parse_iso(x.get("when_iso","1970-01-01T00:00:00")), reverse=True)
 
 def _render_reminder_card(rec: Dict[str, Any], slno: int, is_caregiver: bool, key_prefix: str):
-    st.markdown('<div class="alzy-card">', unsafe_allow_html=True)
-    st.markdown('<div class="alzy-row">', unsafe_allow_html=True)
-    _render_thumb(rec.get("image_path",""))
+    # nice container (no raw HTML wrappers that would get separated)
     with st.container():
-        st.markdown('<div class="alzy-meta">', unsafe_allow_html=True)
-        st.markdown(f"**SL No:** {slno}")
-        st.markdown(f"**Title:** {rec.get('title','(Untitled)')}")
-        st.caption(human_time(rec.get("next_due_iso","")))
-        steps = rec.get("steps", [])
-        if steps:
-            st.markdown("**Steps:**")
-            for i, s in enumerate(steps, 1):
-                st.write(f"{i}. {s}")
+        # subtle background via markdown block (optional):
+        # st.markdown('<div class="alzy-card">', unsafe_allow_html=True)
 
-        # Audio
-        if rec.get("audio_path"):
-            st.markdown("**Audio:**")
-            _render_audio(rec["audio_path"])
+        col_img, col_meta = st.columns([0.6, 1.4])
+        with col_img:
+            _render_thumb(rec.get("image_path", ""))
 
-        # Actions with unique keys per scope
-        st.markdown('<div class="alzy-actions">', unsafe_allow_html=True)
-        c1, c2, c3 = st.columns(3)
-        with c1:
-            if st.button("✅ Done", key=f"{key_prefix}_done_{rec['id']}"):
-                advance_reminder(rec)
-                if rec.get("reminder_type") == "medicine":
-                    add_log(data, rec, "taken (caregiver)" if is_caregiver else "taken (patient)")
-                save_runtime_data(data); st.rerun()
-        with c2:
-            if st.button("⏰ Snooze", key=f"{key_prefix}_snooze_{rec['id']}", help="Snooze by 10 minutes"):
-                snooze_reminder(rec, 10)
-                if rec.get("reminder_type") == "medicine":
-                    add_log(data, rec, "snoozed (caregiver)" if is_caregiver else "snoozed (patient)")
-                save_runtime_data(data); st.rerun()
-        with c3:
-            if st.button("🗑️ Remove", key=f"{key_prefix}_remove_{rec['id']}"):
-                data["reminders"].pop(rec["id"], None)
-                save_runtime_data(data); st.rerun()
-        st.markdown('</div>', unsafe_allow_html=True)  # .alzy-actions
-        st.markdown('</div>', unsafe_allow_html=True)  # .alzy-meta
-    st.markdown('</div>', unsafe_allow_html=True)  # .alzy-row
-    st.markdown('</div>', unsafe_allow_html=True)  # .alzy-card
+        with col_meta:
+            st.markdown(f"**SL No:** {slno}")
+            st.markdown(f"**Title:** {rec.get('title','(Untitled)')}")
+            st.caption(human_time(rec.get("next_due_iso","")))
+
+            steps = rec.get("steps", [])
+            if steps:
+                st.markdown("**Steps:**")
+                for i, s in enumerate(steps, 1):
+                    st.write(f"{i}. {s}")
+
+            if rec.get("audio_path"):
+                st.markdown("**Audio:**")
+                _render_audio(rec["audio_path"])
+
+            c1, c2, c3 = st.columns(3)
+            with c1:
+                if st.button("✅ Done", key=f"{key_prefix}_done_{rec['id']}"):
+                    advance_reminder(rec)
+                    if rec.get("reminder_type") == "medicine":
+                        add_log(data, rec, "taken (caregiver)" if is_caregiver else "taken (patient)")
+                    save_runtime_data(data); st.rerun()
+            with c2:
+                if st.button("⏰ Snooze", key=f"{key_prefix}_snooze_{rec['id']}", help="Snooze by 10 minutes"):
+                    snooze_reminder(rec, 10)
+                    if rec.get("reminder_type") == "medicine":
+                        add_log(data, rec, "snoozed (caregiver)" if is_caregiver else "snoozed (patient)")
+                    save_runtime_data(data); st.rerun()
+            with c3:
+                if st.button("🗑️ Remove", key=f"{key_prefix}_remove_{rec['id']}"):
+                    data["reminders"].pop(rec["id"], None)
+                    save_runtime_data(data); st.rerun()
+
+        # st.markdown('</div>', unsafe_allow_html=True)  # if you used the optional open div above
+
+        st.divider()  # visual separation between cards
 
 def _render_due_and_coming(is_caregiver: bool, types: tuple = ("activity", "medicine"), scope: str = "scope"):
     """Render Due Now + Coming Soon for the given reminder types only."""
@@ -1024,6 +1027,7 @@ else:
                 """,
                 unsafe_allow_html=True,
             )
+
 
 
 
