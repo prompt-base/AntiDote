@@ -653,7 +653,7 @@ if st.session_state.role == "caretaker":
 
     # HOME
     with tab_home:
-        _render_due_and_coming(is_caregiver=True)
+        _render_due_and_coming(is_caregiver=True, types=("activity","medicine"), scope="cg_home")
 
     # REMINDERS
     with tab_rem:
@@ -830,11 +830,11 @@ else:
 
     # Activity
     with tab_act:
-        _render_due_and_coming(is_caregiver=False)
+        _render_due_and_coming(is_caregiver=False, types=("activity",), scope="pt_act")
 
     # Medicine
     with tab_med:
-        _render_due_and_coming(is_caregiver=False)
+       _render_due_and_coming(is_caregiver=False, types=("medicine",), scope="pt_med")
 
     # Quiz (prefer due; fallback to all people synced from memory book)
     with tab_quiz:
@@ -998,4 +998,5 @@ else:
                 """,
                 unsafe_allow_html=True,
             )
+
 
