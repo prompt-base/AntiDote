@@ -26,7 +26,7 @@ except Exception:
 # ------------------------------------------------------------
 PROJECT_DIR = Path(__file__).parent                   # ANTIDOTE/pages
 APP_DIR = PROJECT_DIR.parent                          # ANTIDOTE
-REPO_ROOT = APP_DIR                                   # project root (where data.json & uploads live
+REPO_ROOT = APP_DIR                                   # project root (where data.json & uploads live)                                  # project root (where data.json & uploads live
                            
 # Base scratch area for runtime uploads
 UPLOAD_BASE = Path("/tmp/alzy_uploads")
@@ -339,10 +339,10 @@ def get_memory_book_images() -> List[Path]:
 
     # Baseline-declared images (repo paths are relative to REPO_ROOT)
     baseline_paths = st.session_state.data.get("memory_book_images", [])
-for rel in baseline_paths:
-    p = Path(resolve_path(rel)).resolve()
-    if p.exists():
-        imgs.append(p)
+    for rel in baseline_paths:
+        p = Path(resolve_path(rel)).resolve()
+        if p.exists():
+            imgs.append(p)
 
     # Runtime uploaded images
     if MBOOK_IMG_DIR.exists():
@@ -1018,4 +1018,5 @@ else:
                 """,
                 unsafe_allow_html=True,
             )
+
 
