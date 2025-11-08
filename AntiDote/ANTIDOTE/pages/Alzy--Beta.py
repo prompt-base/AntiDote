@@ -606,9 +606,7 @@ def _display_memory_book_gallery():
         with cols[idx % 2]:
             st.markdown('<div class="alzy-card">', unsafe_allow_html=True)
             # image
-            st.markdown('<div class="alzy-thumb">', unsafe_allow_html=True)
-            st.image(str(img_path), width=140)
-            st.markdown('</div>', unsafe_allow_html=True)
+            _render_thumb(str(img_path))
 
             # meta: prefer Person mapping (resolve both sides)
             ap = os.path.abspath(resolve_path(str(img_path)))
@@ -1027,6 +1025,7 @@ else:
                 """,
                 unsafe_allow_html=True,
             )
+
 
 
 
