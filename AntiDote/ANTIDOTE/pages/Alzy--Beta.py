@@ -116,6 +116,24 @@ def human_time(dt_iso: str) -> str:
         return dt_iso
 
 # ------------------------------------------------------------
+# Image Path
+# ------------------------------------------------------------
+def resolve_path(p: str) -> str:
+    """Return an absolute path for media. Supports:
+    - absolute paths (unchanged)
+    - baseline relative paths stored in data.json (resolved from REPO_ROOT)
+    """
+    if not p:
+        return ""
+    if os.path.isabs(p) and os.path.exists(p):
+        return p
+    # try baseline relative (repo-root)
+    candidate = (REPO_ROOT / p).resolve()
+    if os.path.exists(candidate):
+        return str(candidate)
+    return p  # fallback (may still be relative runtime path)
+
+# ------------------------------------------------------------
 # DATA LOAD & MERGE
 # ------------------------------------------------------------
 def default_data() -> Dict[str, Any]:
@@ -385,7 +403,8 @@ def get_qp(name: str) -> Optional[str]:
     return v
 
 def image_exists(path: str) -> bool:
-    return bool(path and os.path.exists(path))
+    rp = resolve_path(path)
+    return bool(rp and os.path.exists(rp))
 
 def read_audio_bytes(path: str) -> Optional[bytes]:
     try:
@@ -504,12 +523,14 @@ with right:
 # SHARED RENDER HELPERS
 # ------------------------------------------------------------
 def _render_thumb(path: str):
+    rp = resolve_path(path)
     if image_exists(path):
         st.markdown('<div class="alzy-thumb">', unsafe_allow_html=True)
-        st.image(path, use_container_width=True)
+        st.image(rp, use_container_width=True)
         st.markdown('</div>', unsafe_allow_html=True)
     else:
         st.markdown('<div class="noimg">No image</div>', unsafe_allow_html=True)
+
 
 def _render_audio(audio_path: str):
     if audio_path and os.path.exists((REPO_ROOT / audio_path).resolve()) and not os.path.isabs(audio_path):
@@ -622,9 +643,15 @@ def _display_memory_book_gallery():
             st.markdown('</div>', unsafe_allow_html=True)
 
             # meta: prefer Person mapping
-            ap = os.path.abspath(str(img_path))
-            person = next((p for p in data["people"].values()
-                           if os.path.abspath(p.get("image_path","")) == ap), None)
+            ap = os.path.abspath(resolve_path(str(img_path)))
+                person = next(
+                    (
+                        p for p in data["people"].values()
+                        if os.path.abspath(resolve_path(p.get("image_path",""))) == ap
+                    ),
+                    None
+                )
+
             if person:
                 display_name = person.get("name") or "Family"
                 display_rel  = person.get("relation") or "Family"
@@ -998,5 +1025,6 @@ else:
                 """,
                 unsafe_allow_html=True,
             )
+
 
 
