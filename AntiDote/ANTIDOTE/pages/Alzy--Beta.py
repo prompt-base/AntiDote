@@ -624,6 +624,88 @@ def _render_due_and_coming(
                     key_prefix=f"{scope}_soon_{t}",
                     show_actions=False,   # << no buttons in Coming soon
                 )
+# --- QUIZ (simple & calm for ALZY) ---
+def _render_quiz_simple():
+    st.subheader("🧩 Face quiz")
+
+    # session init for quiz
+    if "quiz_target_id" not in st.session_state:
+        st.session_state.quiz_target_id = None
+        st.session_state.quiz_option_ids = []
+        st.session_state.quiz_feedback = None   # "✅ Correct!" / "❌ Not correct."
+        st.session_state.quiz_is_correct = None # True/False
+
+    # keep people in sync from memory book
+    ensure_people_from_memory_book(data)
+
+    # prefer due people, else all
+    due = [
+        p for p in data["people"].values()
+        if parse_iso(p.get("next_due_iso", "2099-01-01T00:00:00")) <= now_local()
+    ]
+    pool = due if due else list(data["people"].values())
+
+    if not pool:
+        st.info("No Memory Book images found. Please add some in the Memory Book tab.")
+        return
+
+    # generate a new question if we don't have one
+    if st.session_state.quiz_target_id is None:
+        target = random.choice(pool)
+        others = [p for p in data["people"].values() if p["id"] != target["id"]]
+        random.shuffle(others)
+        others = others[:2]  # two distractors
+        st.session_state.quiz_target_id = target["id"]
+        st.session_state.quiz_option_ids = [target["id"]] + [o["id"] for o in others]
+        st.session_state.quiz_feedback = None
+        st.session_state.quiz_is_correct = None
+
+    # fetch target now
+    target = data["people"][st.session_state.quiz_target_id]
+
+    # centered target face (a bit larger than thumb)
+    st.write("Who is this?")
+    _c1, _c2, _c3 = st.columns([1, 1.2, 1])
+    with _c2:
+        ip = target.get("image_path", "")
+        rp = resolve_path(ip)
+        if image_exists(ip):
+            st.image(rp, width=220)
+        else:
+            st.markdown('<div class="noimg">No image</div>', unsafe_allow_html=True)
+
+    # name option buttons (no option photos)
+    option_people = [data["people"][pid] for pid in st.session_state.quiz_option_ids if pid in data["people"]]
+    random.shuffle(option_people)
+
+    st.markdown(" ")
+    colA, colB, colC = st.columns(3)
+    cols = [colA, colB, colC]
+
+    for i, p in enumerate(option_people):
+        label = f"{p['name']} — {p.get('relation', 'Family')}"
+        with cols[i]:
+            if st.button(label, key=f"quiz_ans_{p['id']}"):
+                is_correct = (p["id"] == target["id"])
+                # spaced repetition update
+                mark_quiz_result(data, target["id"], is_correct)
+                # keep face on screen; show feedback
+                st.session_state.quiz_is_correct = is_correct
+                st.session_state.quiz_feedback = "✅ Correct!" if is_correct else "❌ Not correct."
+
+    # persistent feedback + Next
+    if st.session_state.quiz_feedback:
+        if st.session_state.quiz_is_correct:
+            st.success(st.session_state.quiz_feedback)
+        else:
+            st.error(st.session_state.quiz_feedback)
+
+        if st.button("➡️ Next face", key="quiz_next_face"):
+            st.session_state.quiz_target_id = None
+            st.session_state.quiz_option_ids = []
+            st.session_state.quiz_feedback = None
+            st.session_state.quiz_is_correct = None
+            st.rerun()
 
 
 def _display_memory_book_gallery():
@@ -894,88 +976,9 @@ else:
         _render_due_and_coming(is_caregiver=False, types=("medicine",), scope="pt_med")
 
     # Quiz (prefer due; fallback to all people synced from memory book)
+    # Quiz (simple)
     with tab_quiz:
-    st.subheader("🧩 Face quiz")
-
-    # session init for quiz
-    if "quiz_target_id" not in st.session_state:
-        st.session_state.quiz_target_id = None
-        st.session_state.quiz_option_ids = []
-        st.session_state.quiz_feedback = None   # "✅ Correct!" / "❌ Not correct."
-        st.session_state.quiz_is_correct = None # True/False
-
-    ensure_people_from_memory_book(data)  # keep people in sync from memory book
-
-    # Build pool: prefer due people, else all
-    due = [
-        p for p in data["people"].values()
-        if parse_iso(p.get("next_due_iso", "2099-01-01T00:00:00")) <= now_local()
-    ]
-    pool = due if due else list(data["people"].values())
-
-    if not pool:
-        st.info("No Memory Book images found. Please add some in the Memory Book tab.")
-    else:
-        # Generate a new question if we don't have one
-        if st.session_state.quiz_target_id is None:
-            target = random.choice(pool)
-            others = [p for p in data["people"].values() if p["id"] != target["id"]]
-            random.shuffle(others)
-            others = others[:2]  # 2 distractors
-            st.session_state.quiz_target_id = target["id"]
-            st.session_state.quiz_option_ids = [target["id"]] + [o["id"] for o in others]
-            st.session_state.quiz_feedback = None
-            st.session_state.quiz_is_correct = None
-
-        # Fetch the target now
-        target = data["people"][st.session_state.quiz_target_id]
-
-        # Centered target face (bigger thumb here only for quiz)
-        st.write("Who is this?")
-        cleft, ccenter, cright = st.columns([1, 1.2, 1])
-        with ccenter:
-            ip = target.get("image_path", "")
-            rp = resolve_path(ip)
-            if image_exists(ip):
-                # a bit larger than regular thumbs for clearer recognition
-                st.image(rp, width=220)
-            else:
-                st.markdown('<div class="noimg">No image</div>', unsafe_allow_html=True)
-
-        # Name option buttons (no option images to avoid visual clutter)
-        option_people = [data["people"][pid] for pid in st.session_state.quiz_option_ids if pid in data["people"]]
-        random.shuffle(option_people)
-
-        st.markdown(" ")  # small spacer
-        colA, colB, colC = st.columns(3)
-        cols = [colA, colB, colC]
-
-        # Render the three big buttons
-        for i, p in enumerate(option_people):
-            label = f"{p['name']} — {p.get('relation', 'Family')}"
-            with cols[i]:
-                if st.button(label, key=f"quiz_ans_{p['id']}"):
-                    is_correct = (p["id"] == target["id"])
-                    # update spaced repetition on answer
-                    mark_quiz_result(data, target["id"], is_correct)
-                    # show feedback and keep the same face until user presses Next
-                    st.session_state.quiz_is_correct = is_correct
-                    st.session_state.quiz_feedback = "✅ Correct!" if is_correct else "❌ Not correct."
-
-        # Persistent feedback + Next
-        if st.session_state.quiz_feedback:
-            if st.session_state.quiz_is_correct:
-                st.success(st.session_state.quiz_feedback)
-            else:
-                st.error(st.session_state.quiz_feedback)
-
-            # Next face button
-            if st.button("➡️ Next face", key="quiz_next_face"):
-                st.session_state.quiz_target_id = None
-                st.session_state.quiz_option_ids = []
-                st.session_state.quiz_feedback = None
-                st.session_state.quiz_is_correct = None
-                st.rerun()
+    _render_quiz_simple()
 
     # Memory Book (patient view – read-only gallery)
     with tab_mbook:
@@ -1088,6 +1091,7 @@ else:
                 """,
                 unsafe_allow_html=True,
             )
+
 
 
 
