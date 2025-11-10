@@ -10,7 +10,7 @@ import random
 import base64
 import datetime as dt
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Tuple
 
 import streamlit as st
 from PIL import Image  # noqa: F401
@@ -27,8 +27,8 @@ except Exception:
 # ------------------------------------------------------------
 PROJECT_DIR = Path(__file__).parent                   # ANTIDOTE/pages
 APP_DIR = PROJECT_DIR.parent                          # ANTIDOTE
-REPO_ROOT = APP_DIR                                   # project root (where data.json & uploads live)                                  # project root (where data.json & uploads live
-                           
+REPO_ROOT = APP_DIR                                   # project root (where data.json & uploads live)
+
 # Base scratch area for runtime uploads
 UPLOAD_BASE = Path("/tmp/alzy_uploads")
 UPLOAD_BASE.mkdir(parents=True, exist_ok=True)
@@ -144,7 +144,7 @@ def default_data() -> Dict[str, Any]:
         "reminders": {},
         "people": {},
         "logs": [],
-        "gps": {"home_address": "", "lat": "", "lon": ""},
+        "gps": {"home_address": "", "lat": "", "lon": "", "pois": {}},
         "memory_book_images": [],
     }
 
@@ -413,7 +413,6 @@ def read_audio_bytes(path: str) -> Optional[bytes]:
     except Exception:
         return None
 
-
 # --- GPS helpers (build Google Maps directions & open in new tab) ---
 def _open_external(url: str) -> None:
     """Open a URL in a new browser tab from Streamlit."""
@@ -421,7 +420,7 @@ def _open_external(url: str) -> None:
 
 def _build_dir_url(origin_lat=None, origin_lon=None, dest_lat=None, dest_lon=None, mode: str = "driving") -> str:
     """
-    Build Google Maps directions URL. If origin is None, Google Maps uses device GPS.
+    Build Google Maps directions URL. If origin is None, Google Maps may use device GPS.
     """
     base = "https://www.google.com/maps/dir/?api=1"
     params = []
@@ -432,7 +431,7 @@ def _build_dir_url(origin_lat=None, origin_lon=None, dest_lat=None, dest_lon=Non
     params.append(f"travelmode={mode}")
     return base + "&" + "&".join(params)
 
-def _offset_point(lat: float, lon: float, km_north: float = 0.0, km_east: float = 0.0) -> tuple[float, float]:
+def _offset_point(lat: float, lon: float, km_north: float = 0.0, km_east: float = 0.0) -> Tuple[float, float]:
     """
     Roughly offset a lat/lon by km. 1 deg lat ~111km, 1 deg lon ~111km*cos(lat).
     Good enough to synthesize a ~5km sample point.
@@ -441,7 +440,6 @@ def _offset_point(lat: float, lon: float, km_north: float = 0.0, km_east: float 
     dlat = km_north / 111.0
     dlon = km_east / (111.0 * max(0.1, abs(math.cos(math.radians(lat)))))
     return lat + dlat, lon + dlon
-
 
 # ------------------------------------------------------------
 # PAGE CONFIG + CSS
@@ -469,17 +467,16 @@ st.markdown(
     }
     .alzy-row { display:flex; gap:10px; align-items:flex-start; }
     .alzy-thumb {
-  width: 170px; height: 130px; border-radius:12px; overflow:hidden; border:1px solid var(--border); flex: 0 0 auto;
-}
-.alzy-thumb img { width:100%; height:100%; object-fit:cover; display:block; }
+      width: 170px; height: 130px; border-radius:12px; overflow:hidden; border:1px solid var(--border); flex: 0 0 auto;
+    }
+    .alzy-thumb img { width:100%; height:100%; object-fit:cover; display:block; }
 
-/* Make thumbs even smaller on narrow screens; slightly larger on wide screens */
-@media (max-width: 640px) {
-  .alzy-thumb { width: 150px; height: 116px; }
-}
-@media (min-width: 1400px) {
-  .alzy-thumb { width: 190px; height: 144px; }
-}
+    @media (max-width: 640px) {
+      .alzy-thumb { width: 150px; height: 116px; }
+    }
+    @media (min-width: 1400px) {
+      .alzy-thumb { width: 190px; height: 144px; }
+    }
 
     .alzy-meta { flex: 1 1 auto; min-width: 0; }
     .alzy-actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
@@ -499,45 +496,38 @@ st.markdown(
       font-size:.8rem; background:rgba(255,255,255,.03);
     }
     /* --- Memory Book gallery --- */
-.mbook-thumb {
-  width: 100%;
-  aspect-ratio: 4 / 3;            /* keeps a consistent rectangle */
-  border-radius: 12px;
-  overflow: hidden;
-  border: 1px solid var(--border);
-  background: rgba(255,255,255,.03);
-}
-.mbook-thumb img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-  transition: transform .25s ease;
-}
-.mbook-thumb:hover img {
-  transform: scale(1.08);         /* subtle zoom on hover */
-}
-.mbook-row-sep {
-  height: 14px; 
-  border-top: 1px solid var(--border);
-  margin: 8px 0 16px 0;
-}
-.mbook-name {
-  margin-top: 6px;
-}
+    .mbook-thumb {
+      width: 100%;
+      aspect-ratio: 4 / 3;
+      border-radius: 12px;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      background: rgba(255,255,255,.03);
+    }
+    .mbook-thumb img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      transition: transform .25s ease;
+    }
+    .mbook-thumb:hover img {
+      transform: scale(1.08);
+    }
+    .mbook-row-sep {
+      height: 14px;
+      border-top: 1px solid var(--border);
+      margin: 8px 0 16px 0;
+    }
+    .mbook-name { margin-top: 6px; }
     audio { width: 100%; max-width: 260px; }
     hr.thick {
-  border: 0;
-  height: 3px;                         /* thicker line */
-  background: linear-gradient(
-    90deg,
-    rgba(255,255,255,0.12),
-    rgba(255,255,255,0.22),
-    rgba(255,255,255,0.12)
-  );
-  margin: 10px 0 14px 0;               /* more breathing room */
-  border-radius: 2px;
-}
+      border: 0;
+      height: 3px;
+      background: linear-gradient(90deg, rgba(255,255,255,0.12), rgba(255,255,255,0.22), rgba(255,255,255,0.12));
+      margin: 10px 0 14px 0;
+      border-radius: 2px;
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -549,6 +539,7 @@ st.markdown(
 if "data" not in st.session_state:
     st.session_state.data = load_merged_data()
 data = st.session_state.data
+
 # Ensure gps & favorite places schema exists
 data.setdefault("gps", {})
 data["gps"].setdefault("pois", {
@@ -575,29 +566,21 @@ if qp_role in ("patient", "caretaker"):
 # ------------------------------------------------------------
 # SHARED RENDER HELPERS
 # ------------------------------------------------------------
-# replaces your current _render_thumb
 def _render_thumb(path: str) -> None:
     """Render a small thumbnail with a fixed target height (cropped/resized via PIL)."""
     rp = resolve_path(path)
     if image_exists(path):
         try:
             img = Image.open(rp).convert("RGB")
-            target_h = 190  # increase this to make taller thumbnails (was ~170)
-            # keep aspect ratio by scaling width accordingly
+            target_h = 190  # increase this to make taller thumbnails
             scale = target_h / float(img.height if img.height else 1)
             target_w = max(1, int(img.width * scale))
-            # resize with good quality
             img = img.resize((target_w, target_h), Image.LANCZOS)
             st.image(img, use_container_width=False)
         except Exception:
-            # fallback to a wider render (still taller due to aspect)
             st.image(rp, width=220)
     else:
-        st.markdown(
-            '<div class="noimg" style="height: 170px;">No image</div>',
-            unsafe_allow_html=True
-        )
-
+        st.markdown('<div class="noimg" style="height: 170px;">No image</div>', unsafe_allow_html=True)
 
 def _render_audio(audio_path: str):
     if not audio_path:
@@ -647,24 +630,14 @@ def _render_reminder_card(
                     if st.button("✅ Done", key=f"{key_prefix}_done_{rec['id']}"):
                         advance_reminder(rec)
                         if rec.get("reminder_type") == "medicine":
-                            add_log(
-                                data, rec,
-                                "taken (caregiver)" if is_caregiver else "taken (patient)"
-                            )
+                            add_log(data, rec, "taken (caregiver)" if is_caregiver else "taken (patient)")
                         save_runtime_data(data)
                         st.rerun()
                 with c2:
-                    if st.button(
-                        "⏰ Snooze",
-                        key=f"{key_prefix}_snooze_{rec['id']}",
-                        help="Snooze by 10 minutes",
-                    ):
+                    if st.button("⏰ Snooze", key=f"{key_prefix}_snooze_{rec['id']}", help="Snooze by 10 minutes"):
                         snooze_reminder(rec, 10)
                         if rec.get("reminder_type") == "medicine":
-                            add_log(
-                                data, rec,
-                                "snoozed (caregiver)" if is_caregiver else "snoozed (patient)"
-                            )
+                            add_log(data, rec, "snoozed (caregiver)" if is_caregiver else "snoozed (patient)")
                         save_runtime_data(data)
                         st.rerun()
                 with c3:
@@ -674,7 +647,6 @@ def _render_reminder_card(
                         st.rerun()
 
         st.markdown("<hr class='thick' />", unsafe_allow_html=True)
-
 
 def _render_due_and_coming(
     is_caregiver: bool,
@@ -694,11 +666,7 @@ def _render_due_and_coming(
         else:
             due = sorted(due, key=lambda x: parse_iso(x["next_due_iso"]))
             for i, r in enumerate(due, 1):
-                _render_reminder_card(
-                    r, i, is_caregiver,
-                    key_prefix=f"{scope}_due_{t}",
-                    show_actions=True,
-                )
+                _render_reminder_card(r, i, is_caregiver, key_prefix=f"{scope}_due_{t}", show_actions=True)
 
     # COMING SOON (next 24 hours)
     st.subheader("🟡 Coming soon")
@@ -714,11 +682,8 @@ def _render_due_and_coming(
         else:
             upcoming = sorted(upcoming, key=lambda x: parse_iso(x["next_due_iso"]))
             for i, r in enumerate(upcoming, 1):
-                _render_reminder_card(
-                    r, i, is_caregiver,
-                    key_prefix=f"{scope}_soon_{t}",
-                    show_actions=False,   # << no buttons in Coming soon
-                )
+                _render_reminder_card(r, i, is_caregiver, key_prefix=f"{scope}_soon_{t}", show_actions=False)
+
 # --- QUIZ (simple & calm for ALZY) ---
 def _render_quiz_simple():
     st.subheader("🧩 Face quiz")
@@ -727,8 +692,8 @@ def _render_quiz_simple():
     if "quiz_target_id" not in st.session_state:
         st.session_state.quiz_target_id = None
         st.session_state.quiz_option_ids = []
-        st.session_state.quiz_feedback = None   # "✅ Correct!" / "❌ Not correct."
-        st.session_state.quiz_is_correct = None # True/False
+        st.session_state.quiz_feedback = None
+        st.session_state.quiz_is_correct = None
 
     # keep people in sync from memory book
     ensure_people_from_memory_book(data)
@@ -758,7 +723,7 @@ def _render_quiz_simple():
     # fetch target now
     target = data["people"][st.session_state.quiz_target_id]
 
-    # centered target face (a bit larger than thumb)
+    # centered target face
     st.write("Who is this?")
     _c1, _c2, _c3 = st.columns([1, 1.2, 1])
     with _c2:
@@ -782,13 +747,11 @@ def _render_quiz_simple():
         with cols[i]:
             if st.button(label, key=f"quiz_ans_{p['id']}"):
                 is_correct = (p["id"] == target["id"])
-                # spaced repetition update
                 mark_quiz_result(data, target["id"], is_correct)
-                # keep face on screen; show feedback
                 st.session_state.quiz_is_correct = is_correct
                 st.session_state.quiz_feedback = "✅ Correct!" if is_correct else "❌ Not correct."
 
-    # persistent feedback + Next
+    # feedback + Next
     if st.session_state.quiz_feedback:
         if st.session_state.quiz_is_correct:
             st.success(st.session_state.quiz_feedback)
@@ -802,14 +765,12 @@ def _render_quiz_simple():
             st.session_state.quiz_is_correct = None
             st.rerun()
 
-
 def _display_memory_book_gallery():
     imgs = get_memory_book_images()
     if not imgs:
         st.info("No images found yet.")
         return
 
-    # Chunk images into rows of 4
     def _chunks(seq, n):
         for i in range(0, len(seq), n):
             yield seq[i:i + n]
@@ -818,7 +779,6 @@ def _display_memory_book_gallery():
         cols = st.columns(4, gap="small")
         for idx, img_path in enumerate(row):
             with cols[idx]:
-                # Image with hover zoom
                 _render_thumb(str(img_path))
 
                 # Resolve name/relation (prefer linked person)
@@ -837,10 +797,10 @@ def _display_memory_book_gallery():
                     display_name = base.replace("-", " ").replace("_", " ").title() or "Family"
                     display_rel  = "Family"
 
-                # Name + relation under the image
-                st.markdown(f'<div class="mbook-name"><strong>{display_name}</strong><br/><span class="chip">{display_rel}</span></div>', unsafe_allow_html=True)
-
-        # Separator after each row
+                st.markdown(
+                    f'<div class="mbook-name"><strong>{display_name}</strong><br/><span class="chip">{display_rel}</span></div>',
+                    unsafe_allow_html=True
+                )
         st.markdown('<div class="mbook-row-sep"></div>', unsafe_allow_html=True)
 
 # ------------------------------------------------------------
@@ -851,11 +811,11 @@ if st.session_state.role is None:
     st.markdown("<p style='text-align:center;'>Who are you?</p>", unsafe_allow_html=True)
     c1, c2 = st.columns(2)
     with c1:
-            if st.button("🧑‍🦽 Patient", key="choose_patient"):
-                st.session_state.role = "patient"; st.rerun()
+        if st.button("🧑‍🦽 Patient", key="choose_patient"):
+            st.session_state.role = "patient"; st.rerun()
     with c2:
-           if st.button("🧑‍⚕️ Caregiver", key="choose_caregiver"):
-                st.session_state.role = "caretaker"; st.rerun()
+        if st.button("🧑‍⚕️ Caregiver", key="choose_caregiver"):
+            st.session_state.role = "caretaker"; st.rerun()
     st.stop()
 
 # ------------------------------------------------------------
@@ -880,13 +840,6 @@ with right:
 # ------------------------------------------------------------
 # CAREGIVER VIEW
 # ------------------------------------------------------------
-GO_HOME_URL = (
-    "https://www.google.com/maps/dir//Garia,+Kolkata,+West+Bengal/@22.4624833,88.3695706,14z/"
-    "data=!4m18!1m8!3m7!1s0x3a0271a00d52ca53:0x84c91e76a182e37a!2sGaria,+Kolkata,+West+Bengal!"
-    "3b1!8m2!3d22.4660129!4d88.3928446!16zL20vMGMwMnYx!4m8!1m0!1m5!1m1!1s0x3a0271a00d52ca53:"
-    "0x84c91e76a182e37a!2m2!1d88.3928446!2d22.4660129!3e0?entry=ttu"
-)
-
 if st.session_state.role == "caretaker":
     tab_home, tab_rem, tab_people, tab_logs, tab_gps, tab_mbook = st.tabs(
         ["🏠 Home", "⏰ Reminders", "👨‍👩‍👧 People", "📜 Logs", "📍 GPS / Home", "📘 Memory Book"]
@@ -907,7 +860,8 @@ if st.session_state.role == "caretaker":
             time_options = [f"{h:02d}:{m:02d}" for h in range(24) for m in range(0, 60, 5)]
             now_dt = now_local()
             default_time_str = f"{now_dt.hour:02d}:{(now_dt.minute//5)*5:02d}"
-            if default_time_str not in time_options: default_time_str = "23:55"
+            if default_time_str not in time_options:
+                default_time_str = "23:55"
             time_str = st.selectbox("Time", options=time_options, index=time_options.index(default_time_str))
             t = dt.time(int(time_str[:2]), int(time_str[3:]))
 
@@ -922,10 +876,7 @@ if st.session_state.role == "caretaker":
                     st.error("Title required")
                 else:
                     when_dt = dt.datetime.combine(d, t, tzinfo=IST) if IST else dt.datetime.combine(d, t)
-                    if img_up:
-                        img_path = save_upload_to(img_up, MEDICINE_IMG_DIR if rtype=="medicine" else ACTIVITY_IMG_DIR)
-                    else:
-                        img_path = ""
+                    img_path = save_upload_to(img_up, MEDICINE_IMG_DIR if rtype=="medicine" else ACTIVITY_IMG_DIR) if img_up else ""
                     aud_path = save_upload_to(aud_up, AUDIO_DIR) if aud_up else ""
                     steps = [s.strip() for s in steps_txt.splitlines() if s.strip()]
                     add_reminder(data, title, when_dt, img_path, aud_path, steps, rpt, reminder_type=rtype)
@@ -972,213 +923,143 @@ if st.session_state.role == "caretaker":
             for lg in logs:
                 st.write(f"{human_time(lg['time'])} — {lg['title']} — {lg['action']} — ({lg['type']})")
 
-    # GPS
+    # GPS (CAREGIVER)
     with tab_gps:
         st.subheader("📍 GPS / Home (IST time shown across app)")
 
-    cur = data.get("gps", {})
-    cur_home = cur.get("home_address", "")
-    cur_lat = cur.get("lat", "")
-    cur_lon = cur.get("lon", "")
+        cur = data.get("gps", {})
+        cur_home = cur.get("home_address", "")
+        cur_lat = cur.get("lat", "")
+        cur_lon = cur.get("lon", "")
 
-    st.write(f"Current saved home: **{cur_home or 'Not set'}**")
-    st.write(f"Lat/Lon: {cur_lat or '-'}, {cur_lon or '-'}")
+        st.write(f"Current saved home: **{cur_home or 'Not set'}**")
+        st.write(f"Lat/Lon: {cur_lat or '-'}, {cur_lon or '-'}")
 
-    components.html(
-        """
-        <button onclick="getGPS()" style="padding:8px 14px;border:none;background:#0ea5e9;color:white;border-radius:8px;cursor:pointer;">
-          📍 Get current location
-        </button>
-        <script>
-        function getGPS(){
-          if (!navigator.geolocation){ alert("Geolocation not supported"); return; }
-          navigator.geolocation.getCurrentPosition(function(pos){
-            const lat = pos.coords.latitude, lon = pos.coords.longitude;
-            const u = new URL(window.parent.location.href);
-            u.searchParams.set('lat', lat); u.searchParams.set('lon', lon);
-            window.parent.location.href = u.toString();
-          }, function(err){ alert(err.message); });
-        }
-        </script>
-        """,
-        height=70,
-    )
-
-    new_lat = get_qp("lat")
-    new_lon = get_qp("lon")
-    if new_lat and new_lon:
-        data["gps"]["lat"] = new_lat
-        data["gps"]["lon"] = new_lon
-        save_runtime_data(data)
-        st.success(f"Saved location: {new_lat}, {new_lon}")
-
-    with st.form("set_home_form"):
-        addr = st.text_input("Home address", value=cur_home)
-        lat_in = st.text_input("Latitude", value=cur_lat)
-        lon_in = st.text_input("Longitude", value=cur_lon)
-        ok = st.form_submit_button("💾 Save home")
-        if ok:
-            data["gps"]["home_address"] = addr
-            data["gps"]["lat"] = lat_in
-            data["gps"]["lon"] = lon_in
-            save_runtime_data(data)
-            st.success("Home saved")
-
-    if cur_lat and cur_lon:
-        try:
-            la = float(cur_lat)
-            lo = float(cur_lon)
-            maps_url = f"https://www.google.com/maps?q={la},{lo}&z=15&output=embed"
-            components.html(
-                f'<iframe src="{maps_url}" width="100%" height="260" style="border:0" loading="lazy"></iframe>',
-                height=270,
-            )
-        except Exception:
-            pass
-
-    if st.button("🧭 Show directions to home"):
-        if cur_lat and cur_lon:
-            url = _build_dir_url(dest_lat=cur_lat, dest_lon=cur_lon, mode="driving")
-            _open_external(url)
-        else:
-            st.error("Please save Home first.")
-
-    # --- Favorite Places (POIs) editor ---
-    st.divider()
-    st.subheader("⭐ Favorite Places (POIs)")
-
-    poi_keys = [
-        ("family_doctor", "Family Doctor"),
-        ("daily_market",  "Daily Market"),
-        ("hospital",      "Hospital"),
-        ("mothers_home",  "Mother's Home"),
-    ]
-    pois = data["gps"].get("pois", {})
-
-    with st.form("save_pois_form", clear_on_submit=False):
-        cols_hdr = st.columns([2, 1, 1])
-        with cols_hdr[0]:
-            st.markdown("**Place name**")
-        with cols_hdr[1]:
-            st.markdown("**Latitude**")
-        with cols_hdr[2]:
-            st.markdown("**Longitude**")
-
-        new_pois = {}
-        for key, label in poi_keys:
-            curp = pois.get(key, {"name": label, "lat": "", "lon": ""})
-            c1, c2, c3 = st.columns([2, 1, 1])
-            with c1:
-                name_val = st.text_input(f"{label} name", value=curp.get("name", ""), key=f"poi_name_{key}")
-            with c2:
-                lat_val = st.text_input(f"{label} lat", value=str(curp.get("lat", "")), key=f"poi_lat_{key}")
-            with c3:
-                lon_val = st.text_input(f"{label} lon", value=str(curp.get("lon", "")), key=f"poi_lon_{key}")
-            new_pois[key] = {
-                "name": (name_val or label).strip(),
-                "lat":  lat_val.strip(),
-                "lon":  lon_val.strip(),
+        components.html(
+            """
+            <button onclick="getGPS()" style="padding:8px 14px;border:none;background:#0ea5e9;color:white;border-radius:8px;cursor:pointer;">
+              📍 Get current location
+            </button>
+            <script>
+            function getGPS(){
+              if (!navigator.geolocation){ alert("Geolocation not supported"); return; }
+              navigator.geolocation.getCurrentPosition(function(pos){
+                const lat = pos.coords.latitude, lon = pos.coords.longitude;
+                const u = new URL(window.parent.location.href);
+                u.searchParams.set('lat', lat); u.searchParams.set('lon', lon);
+                window.parent.location.href = u.toString();
+              }, function(err){ alert(err.message); });
             }
+            </script>
+            """,
+            height=70,
+        )
 
-        if st.form_submit_button("💾 Save POIs"):
-            data["gps"]["pois"] = new_pois
+        new_lat = get_qp("lat")
+        new_lon = get_qp("lon")
+        if new_lat and new_lon:
+            data["gps"]["lat"] = new_lat
+            data["gps"]["lon"] = new_lon
             save_runtime_data(data)
-            st.success("Favorite places saved.")
+            st.success(f"Saved location: {new_lat}, {new_lon}")
 
-    st.caption("Quick test: open driving directions Home → selected place")
-    home_lat = data["gps"].get("lat") or ""
-    home_lon = data["gps"].get("lon") or ""
-    cA, cB, cC, cD = st.columns(4)
-    for (key, label), col in zip(poi_keys, [cA, cB, cC, cD]):
-        with col:
-            if st.button(f"➡️ {label}", key=f"poi_go_{key}"):
-                poi = data["gps"]["pois"].get(key, {})
-                p_lat = poi.get("lat") or ""
-                p_lon = poi.get("lon") or ""
-                try:
-                    if (not p_lat or not p_lon) and home_lat and home_lon:
-                        hlat = float(home_lat)
-                        hlon = float(home_lon)
-                        off_lat, off_lon = _offset_point(hlat, hlon, km_north=3.5, km_east=3.5)
-                        p_lat, p_lon = f"{off_lat:.6f}", f"{off_lon:.6f}"
-                    url = _build_dir_url(
-                        origin_lat=home_lat if home_lat else None,
-                        origin_lon=home_lon if home_lon else None,
-                        dest_lat=p_lat if p_lat else None,
-                        dest_lon=p_lon if p_lon else None,
-                        mode="driving",
-                    )
-                    _open_external(url)
-                except Exception:
-                    st.error("Invalid coordinates. Please check Home and POI lat/lon.")
+        with st.form("set_home_form"):
+            addr = st.text_input("Home address", value=cur_home)
+            lat_in = st.text_input("Latitude", value=cur_lat)
+            lon_in = st.text_input("Longitude", value=cur_lon)
+            ok = st.form_submit_button("💾 Save home")
+            if ok:
+                data["gps"]["home_address"] = addr
+                data["gps"]["lat"] = lat_in
+                data["gps"]["lon"] = lon_in
+                save_runtime_data(data)
+                st.success("Home saved")
 
-
-    # --- Caregiver: Favorite Places (POIs) editor ---
-st.divider()
-st.subheader("⭐ Favorite Places (POIs)")
-
-poi_keys = [
-    ("family_doctor", "Family Doctor"),
-    ("daily_market",  "Daily Market"),
-    ("hospital",      "Hospital"),
-    ("mothers_home",  "Mother's Home"),
-]
-pois = data["gps"].get("pois", {})
-
-with st.form("save_pois_form", clear_on_submit=False):
-    cols_hdr = st.columns([2, 1, 1])
-    with cols_hdr[0]: st.markdown("**Place name**")
-    with cols_hdr[1]: st.markdown("**Latitude**")
-    with cols_hdr[2]: st.markdown("**Longitude**")
-
-    new_pois = {}
-    for key, label in poi_keys:
-        cur = pois.get(key, {"name": label, "lat": "", "lon": ""})
-        c1, c2, c3 = st.columns([2, 1, 1])
-        with c1:
-            name_val = st.text_input(f"{label} name", value=cur.get("name",""), key=f"poi_name_{key}")
-        with c2:
-            lat_val = st.text_input(f"{label} lat", value=str(cur.get("lat","")), key=f"poi_lat_{key}")
-        with c3:
-            lon_val = st.text_input(f"{label} lon", value=str(cur.get("lon","")), key=f"poi_lon_{key}")
-        new_pois[key] = {
-            "name": (name_val or label).strip(),
-            "lat":  lat_val.strip(),
-            "lon":  lon_val.strip(),
-        }
-
-    if st.form_submit_button("💾 Save POIs"):
-        data["gps"]["pois"] = new_pois
-        save_runtime_data(data)
-        st.success("Favorite places saved.")
-
-# Quick test buttons: open directions Home → POI (if Home set; else synthesize ~5km)
-st.caption("Quick test: open driving directions Home → selected place")
-home_lat = data["gps"].get("lat") or ""
-home_lon = data["gps"].get("lon") or ""
-cA, cB, cC, cD = st.columns(4)
-for (key, label), col in zip(poi_keys, [cA, cB, cC, cD]):
-    with col:
-        if st.button(f"➡️ {label}", key=f"poi_go_{key}"):
-            poi = data["gps"]["pois"].get(key, {})
-            p_lat = poi.get("lat") or ""
-            p_lon = poi.get("lon") or ""
+        if cur_lat and cur_lon:
             try:
-                if (not p_lat or not p_lon) and home_lat and home_lon:
-                    hlat = float(home_lat); hlon = float(home_lon)
-                    off_lat, off_lon = _offset_point(hlat, hlon, km_north=3.5, km_east=3.5)
-                    p_lat, p_lon = f"{off_lat:.6f}", f"{off_lon:.6f}"
-                url = _build_dir_url(
-                    origin_lat=home_lat if home_lat else None,
-                    origin_lon=home_lon if home_lon else None,
-                    dest_lat=p_lat if p_lat else None,
-                    dest_lon=p_lon if p_lon else None,
-                    mode="driving",
+                la = float(cur_lat)
+                lo = float(cur_lon)
+                maps_url = f"https://www.google.com/maps?q={la},{lo}&z=15&output=embed"
+                components.html(
+                    f'<iframe src="{maps_url}" width="100%" height="260" style="border:0" loading="lazy"></iframe>',
+                    height=270,
                 )
-                _open_external(url)
             except Exception:
-                st.error("Invalid coordinates. Please check Home and POI lat/lon.")
+                pass
 
+        if st.button("🧭 Show directions to home"):
+            if cur_lat and cur_lon:
+                url = _build_dir_url(dest_lat=cur_lat, dest_lon=cur_lon, mode="driving")
+                _open_external(url)
+            else:
+                st.error("Please save Home first.")
+
+        st.divider()
+        st.subheader("⭐ Favorite Places (POIs)")
+
+        poi_keys = [
+            ("family_doctor", "Family Doctor"),
+            ("daily_market",  "Daily Market"),
+            ("hospital",      "Hospital"),
+            ("mothers_home",  "Mother's Home"),
+        ]
+        pois = data["gps"].get("pois", {})
+
+        with st.form("save_pois_form", clear_on_submit=False):
+            cols_hdr = st.columns([2, 1, 1])
+            with cols_hdr[0]:
+                st.markdown("**Place name**")
+            with cols_hdr[1]:
+                st.markdown("**Latitude**")
+            with cols_hdr[2]:
+                st.markdown("**Longitude**")
+
+            new_pois = {}
+            for key, label in poi_keys:
+                curp = pois.get(key, {"name": label, "lat": "", "lon": ""})
+                c1, c2, c3 = st.columns([2, 1, 1])
+                with c1:
+                    name_val = st.text_input(f"{label} name", value=curp.get("name", ""), key=f"poi_name_{key}")
+                with c2:
+                    lat_val = st.text_input(f"{label} lat", value=str(curp.get("lat", "")), key=f"poi_lat_{key}")
+                with c3:
+                    lon_val = st.text_input(f"{label} lon", value=str(curp.get("lon", "")), key=f"poi_lon_{key}")
+                new_pois[key] = {
+                    "name": (name_val or label).strip(),
+                    "lat":  lat_val.strip(),
+                    "lon":  lon_val.strip(),
+                }
+
+            if st.form_submit_button("💾 Save POIs"):
+                data["gps"]["pois"] = new_pois
+                save_runtime_data(data)
+                st.success("Favorite places saved.")
+
+        st.caption("Quick test: open driving directions Home → selected place")
+        home_lat = data["gps"].get("lat") or ""
+        home_lon = data["gps"].get("lon") or ""
+        cA, cB, cC, cD = st.columns(4)
+        for (key, label), col in zip(poi_keys, [cA, cB, cC, cD]):
+            with col:
+                if st.button(f"➡️ {label}", key=f"poi_go_{key}"):
+                    poi = data["gps"].get("pois", {}).get(key, {})
+                    p_lat = poi.get("lat") or ""
+                    p_lon = poi.get("lon") or ""
+                    try:
+                        if (not p_lat or not p_lon) and home_lat and home_lon:
+                            hlat = float(home_lat); hlon = float(home_lon)
+                            off_lat, off_lon = _offset_point(hlat, hlon, km_north=3.5, km_east=3.5)
+                            p_lat, p_lon = f"{off_lat:.6f}", f"{off_lon:.6f}"
+                        url = _build_dir_url(
+                            origin_lat=home_lat if home_lat else None,
+                            origin_lon=home_lon if home_lon else None,
+                            dest_lat=p_lat if p_lat else None,
+                            dest_lon=p_lon if p_lon else None,
+                            mode="driving",
+                        )
+                        _open_external(url)
+                    except Exception:
+                        st.error("Invalid coordinates. Please check Home and POI lat/lon.")
 
     # MEMORY BOOK (uploads saved ONLY to runtime dir; baseline images read from repo)
     with tab_mbook:
@@ -1194,11 +1075,9 @@ for (key, label), col in zip(poi_keys, [cA, cB, cC, cD]):
                     st.error("Please select a photo.")
                 else:
                     pth = save_upload_to(img_up, MBOOK_IMG_DIR, name_hint=(name or rel or "Family"))
-                    # Keep a people record for naming
                     display_name = (name or Path(pth).stem.split("-",1)[0].replace("-"," ").replace("_"," ").title()).strip()
-                    display_rel = (rel or "Family").strip() or "Family"
+                    display_rel  = (rel or "Family").strip() or "Family"
                     add_person(data, display_name, display_rel, pth)
-                    # Also index this image so it appears top-most
                     data.setdefault("memory_book_images", [])
                     if pth not in data["memory_book_images"]:
                         data["memory_book_images"].insert(0, pth)
@@ -1223,20 +1102,18 @@ else:
     with tab_med:
         _render_due_and_coming(is_caregiver=False, types=("medicine",), scope="pt_med")
 
-    # Quiz (prefer due; fallback to all people synced from memory book)
     # Quiz (simple)
     with tab_quiz:
         _render_quiz_simple()
-
 
     # Memory Book (patient view – read-only gallery)
     with tab_mbook:
         st.subheader("📘 Memory Book")
         _display_memory_book_gallery()
 
-    # GPS
-   with tab_gps:
-            st.subheader("📍 GPS (Patient)")
+    # GPS (PATIENT)
+    with tab_gps:
+        st.subheader("📍 GPS (Patient)")
 
         gps = data.get("gps", {})
         home_addr = gps.get("home_address", "")
@@ -1291,8 +1168,6 @@ else:
                         _open_external(url)
                     except Exception:
                         st.error("Please ask the caregiver to set this place in GPS / Home tab.")
-
-
 
     # AI Chatbot
     with tab_ai:
@@ -1391,28 +1266,3 @@ else:
                 """,
                 unsafe_allow_html=True,
             )
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
