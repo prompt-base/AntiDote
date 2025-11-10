@@ -439,16 +439,16 @@ st.markdown(
     }
     .alzy-row { display:flex; gap:10px; align-items:flex-start; }
     .alzy-thumb {
-  width: 140px; height: 105px; border-radius:12px; overflow:hidden; border:1px solid var(--border); flex: 0 0 auto;
+  width: 170px; height: 130px; border-radius:12px; overflow:hidden; border:1px solid var(--border); flex: 0 0 auto;
 }
 .alzy-thumb img { width:100%; height:100%; object-fit:cover; display:block; }
 
 /* Make thumbs even smaller on narrow screens; slightly larger on wide screens */
 @media (max-width: 640px) {
-  .alzy-thumb { width: 130px; height: 96px; }
+  .alzy-thumb { width: 150px; height: 116px; }
 }
 @media (min-width: 1400px) {
-  .alzy-thumb { width: 170px; height: 124px; }
+  .alzy-thumb { width: 190px; height: 144px; }
 }
 
     .alzy-meta { flex: 1 1 auto; min-width: 0; }
@@ -555,7 +555,7 @@ def _render_thumb(path: str) -> None:
             )
         except Exception:
             # fallback if file read fails
-            st.image(rp, width=140)
+            st.image(rp, width=160)
     else:
         st.markdown('<div class="noimg">No image</div>', unsafe_allow_html=True)
 
@@ -1153,6 +1153,7 @@ else:
                 """,
                 unsafe_allow_html=True,
             )
+
 
 
 
