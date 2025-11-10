@@ -465,7 +465,7 @@ st.markdown(
     .btn-danger button { background:#ef4444 !important; color:#fff !important; }
     .btn-warn button { background:#f59e0b !important; color:#111 !important; }
     .noimg {
-      width: 180px; height: 130px; display:flex; align-items:center; justify-content:center; border-radius:12px; border:1px dashed var(--border); color:var(--muted);
+      width: 170px; height: 150px; display:flex; align-items:center; justify-content:center; border-radius:12px; border:1px dashed var(--border); color:var(--muted);
       font-size:.8rem; background:rgba(255,255,255,.03);
     }
     /* --- Memory Book gallery --- */
@@ -555,7 +555,7 @@ def _render_thumb(path: str) -> None:
             )
         except Exception:
             # fallback if file read fails
-            st.image(rp, width=160)
+            st.image(rp, width=180)
     else:
         st.markdown('<div class="noimg">No image</div>', unsafe_allow_html=True)
 
@@ -726,7 +726,7 @@ def _render_quiz_simple():
         ip = target.get("image_path", "")
         rp = resolve_path(ip)
         if image_exists(ip):
-            st.image(rp, width=220)
+            st.image(rp, width=240)
         else:
             st.markdown('<div class="noimg">No image</div>', unsafe_allow_html=True)
 
@@ -1153,6 +1153,7 @@ else:
                 """,
                 unsafe_allow_html=True,
             )
+
 
 
 
