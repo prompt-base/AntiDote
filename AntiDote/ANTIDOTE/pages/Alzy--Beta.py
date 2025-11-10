@@ -418,18 +418,34 @@ def _open_external(url: str) -> None:
     """Open a URL in a new browser tab from Streamlit."""
     components.html(f"<script>window.open('{url}', '_blank');</script>", height=0)
 
-def _build_dir_url(origin_lat=None, origin_lon=None, dest_lat=None, dest_lon=None, mode: str = "driving") -> str:
+def _build_dir_url(
+    origin_lat=None, origin_lon=None,
+    dest_lat=None, dest_lon=None,
+    mode: str = "driving",
+    use_current_origin: bool = False,
+) -> str:
     """
-    Build Google Maps directions URL. If origin is None, Google Maps may use device GPS.
+    Build Google Maps directions URL.
+    - If use_current_origin is True, origin is set to 'Current Location' (device GPS).
+    - dir_action=navigate attempts to start turn-by-turn on mobile.
     """
     base = "https://www.google.com/maps/dir/?api=1"
     params = []
-    if origin_lat and origin_lon:
+
+    if use_current_origin:
+        params.append("origin=Current+Location")
+    elif origin_lat and origin_lon:
         params.append(f"origin={origin_lat},{origin_lon}")
+
     if dest_lat and dest_lon:
         params.append(f"destination={dest_lat},{dest_lon}")
-    params.append(f"travelmode={mode}")
+
+    # 4-wheeler navigation
+    params.append(f"travelmode={mode or 'driving'}")
+    params.append("dir_action=navigate")
+
     return base + "&" + "&".join(params)
+
 
 def _offset_point(lat: float, lon: float, km_north: float = 0.0, km_east: float = 0.0) -> Tuple[float, float]:
     """
@@ -987,12 +1003,17 @@ if st.session_state.role == "caretaker":
             except Exception:
                 pass
 
-        if st.button("🧭 Show directions to home"):
+       if st.button("🧭 Show directions to home"):
             if cur_lat and cur_lon:
-                url = _build_dir_url(dest_lat=cur_lat, dest_lon=cur_lon, mode="driving")
+                url = _build_dir_url(
+                    use_current_origin=True,
+                    dest_lat=cur_lat, dest_lon=cur_lon,
+                    mode="driving",
+                )
                 _open_external(url)
             else:
                 st.error("Please save Home first.")
+
 
         st.divider()
         st.subheader("⭐ Favorite Places (POIs)")
@@ -1126,13 +1147,13 @@ else:
 
         # Row 1: Back to Home (device GPS → Home)
         c1, c2, c3, c4 = st.columns(4)
-        with c1:
+       with c1:
             if st.button("🏠 Back to Home"):
                 url = _build_dir_url(
-                    origin_lat=None, origin_lon=None,  # device GPS
+                    use_current_origin=True,          # 👈 device GPS as origin
                     dest_lat=home_lat if home_lat else None,
                     dest_lon=home_lon if home_lon else None,
-                    mode="driving",
+                    mode="driving",                   # 4-wheeler
                 )
                 if "destination=" in url:
                     _open_external(url)
@@ -1266,4 +1287,5 @@ else:
                 """,
                 unsafe_allow_html=True,
             )
+
 
