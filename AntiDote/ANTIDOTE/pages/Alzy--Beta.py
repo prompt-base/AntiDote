@@ -1113,7 +1113,7 @@ else:
 
     # GPS (PATIENT)
     with tab_gps:
-        st.subheader("📍 GPS (Patient)")
+        st.subheader("📍 Your Guide")
 
         gps = data.get("gps", {})
         home_addr = gps.get("home_address", "")
@@ -1266,3 +1266,4 @@ else:
                 """,
                 unsafe_allow_html=True,
             )
+
