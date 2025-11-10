@@ -920,23 +920,14 @@ else:
                 target = data["people"][st.session_state.quiz_target_id]
                 st.write("Who is this?")
                 ip = target.get("image_path", "")
-                rp = resolve_path(ip)
-                if image_exists(ip):
-                    st.markdown('<div class="alzy-thumb">', unsafe_allow_html=True)
-                    st.image(rp, width=140)
-                    st.markdown('</div>', unsafe_allow_html=True)
-                else:
-                    st.markdown('<div class="noimg">No image</div>', unsafe_allow_html=True)
-
+                _render_thumb(ip)
+                
                 opts = [data["people"][pid] for pid in st.session_state.quiz_option_ids if pid in data["people"]]
                 random.shuffle(opts)
                 cols = st.columns(len(opts))
                 for i, p in enumerate(opts):
                     with cols[i]:
-                        if image_exists(p.get("image_path","")):
-                            st.markdown('<div class="alzy-thumb">', unsafe_allow_html=True)
-                            st.image(resolve_path(p["image_path"]), width=140)
-                            st.markdown('</div>', unsafe_allow_html=True)
+                        _render_thumb(p.get("image_path", ""))
                         if st.button(f"{p['name']} — {p.get('relation','Family')}", key=f"ans_{p['id']}"):
                             correct = p["id"] == target["id"]
                             mark_quiz_result(data, target["id"], correct)
@@ -1056,6 +1047,7 @@ else:
                 """,
                 unsafe_allow_html=True,
             )
+
 
 
 
