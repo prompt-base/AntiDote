@@ -467,6 +467,33 @@ st.markdown(
       width: 180px; height: 130px; display:flex; align-items:center; justify-content:center; border-radius:12px; border:1px dashed var(--border); color:var(--muted);
       font-size:.8rem; background:rgba(255,255,255,.03);
     }
+    /* --- Memory Book gallery --- */
+.mbook-thumb {
+  width: 100%;
+  aspect-ratio: 4 / 3;            /* keeps a consistent rectangle */
+  border-radius: 12px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: rgba(255,255,255,.03);
+}
+.mbook-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+  transition: transform .25s ease;
+}
+.mbook-thumb:hover img {
+  transform: scale(1.08);         /* subtle zoom on hover */
+}
+.mbook-row-sep {
+  height: 14px; 
+  border-top: 1px solid var(--border);
+  margin: 8px 0 16px 0;
+}
+.mbook-name {
+  margin-top: 6px;
+}
     audio { width: 100%; max-width: 260px; }
     </style>
     """,
@@ -713,35 +740,40 @@ def _display_memory_book_gallery():
     if not imgs:
         st.info("No images found yet.")
         return
-    # 2-column compact layout
-    cols = st.columns(2)
-    for idx, img_path in enumerate(imgs):
-        with cols[idx % 2]:
-            #st.markdown('<div class="alzy-card">', unsafe_allow_html=True)
-            # image
-            _render_thumb(str(img_path))
 
-            # meta: prefer Person mapping (resolve both sides)
-            ap = os.path.abspath(resolve_path(str(img_path)))
-            person = next(
-                (
-                    p for p in data["people"].values()
-                    if os.path.abspath(resolve_path(p.get("image_path",""))) == ap
-                ),
-                None
-            )
-            if person:
-                display_name = person.get("name") or "Family"
-                display_rel  = person.get("relation") or "Family"
-            else:
-                stem = Path(img_path).stem
-                base = stem.split("-", 1)[0]
-                display_name = base.replace("-", " ").replace("_", " ").title() or "Family"
-                display_rel  = "Family"
+    # Chunk images into rows of 4
+    def _chunks(seq, n):
+        for i in range(0, len(seq), n):
+            yield seq[i:i + n]
 
-            st.markdown(f"**Name:** {display_name}")
-            st.markdown(f"**Relation:** {display_rel}")
-            #st.markdown('</div>', unsafe_allow_html=True)
+    for row in _chunks(imgs, 4):
+        cols = st.columns(4, gap="small")
+        for idx, img_path in enumerate(row):
+            with cols[idx]:
+                # Image with hover zoom
+                _render_thumb_gallery(str(img_path))
+
+                # Resolve name/relation (prefer linked person)
+                ap = os.path.abspath(resolve_path(str(img_path)))
+                person = next(
+                    (p for p in data["people"].values()
+                     if os.path.abspath(resolve_path(p.get("image_path",""))) == ap),
+                    None
+                )
+                if person:
+                    display_name = person.get("name") or "Family"
+                    display_rel  = person.get("relation") or "Family"
+                else:
+                    stem = Path(img_path).stem
+                    base = stem.split("-", 1)[0]
+                    display_name = base.replace("-", " ").replace("_", " ").title() or "Family"
+                    display_rel  = "Family"
+
+                # Name + relation under the image
+                st.markdown(f'<div class="mbook-name"><strong>{display_name}</strong><br/><span class="chip">{display_rel}</span></div>', unsafe_allow_html=True)
+
+        # Separator after each row
+        st.markdown('<div class="mbook-row-sep"></div>', unsafe_allow_html=True)
 
 # ------------------------------------------------------------
 # LANDING (choose role)
@@ -1092,6 +1124,7 @@ else:
                 """,
                 unsafe_allow_html=True,
             )
+
 
 
 
