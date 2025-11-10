@@ -717,7 +717,7 @@ def _display_memory_book_gallery():
     cols = st.columns(2)
     for idx, img_path in enumerate(imgs):
         with cols[idx % 2]:
-            st.markdown('<div class="alzy-card">', unsafe_allow_html=True)
+            #st.markdown('<div class="alzy-card">', unsafe_allow_html=True)
             # image
             _render_thumb(str(img_path))
 
@@ -741,7 +741,7 @@ def _display_memory_book_gallery():
 
             st.markdown(f"**Name:** {display_name}")
             st.markdown(f"**Relation:** {display_rel}")
-            st.markdown('</div>', unsafe_allow_html=True)
+            #st.markdown('</div>', unsafe_allow_html=True)
 
 # ------------------------------------------------------------
 # LANDING (choose role)
@@ -1092,6 +1092,7 @@ else:
                 """,
                 unsafe_allow_html=True,
             )
+
 
 
 
