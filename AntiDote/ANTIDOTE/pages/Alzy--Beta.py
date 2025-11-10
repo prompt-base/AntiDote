@@ -1236,62 +1236,62 @@ else:
 
     # GPS
    with tab_gps:
-    st.subheader("📍 GPS (Patient)")
+            st.subheader("📍 GPS (Patient)")
 
-    gps = data.get("gps", {})
-    home_addr = gps.get("home_address", "")
-    home_lat  = gps.get("lat") or ""
-    home_lon  = gps.get("lon") or ""
-    pois      = gps.get("pois", {})
+        gps = data.get("gps", {})
+        home_addr = gps.get("home_address", "")
+        home_lat  = gps.get("lat") or ""
+        home_lon  = gps.get("lon") or ""
+        pois      = gps.get("pois", {})
 
-    st.write(f"Home: **{home_addr or 'Not set'}**")
-    st.caption("Tap a button to open Google Maps with directions.")
+        st.write(f"Home: **{home_addr or 'Not set'}**")
+        st.caption("Tap a button to open Google Maps with directions.")
 
-    # Row 1: Back to Home (device GPS → Home)
-    c1, c2, c3, c4 = st.columns(4)
-    with c1:
-        if st.button("🏠 Back to Home"):
-            url = _build_dir_url(
-                origin_lat=None, origin_lon=None,  # device GPS
-                dest_lat=home_lat if home_lat else None,
-                dest_lon=home_lon if home_lon else None,
-                mode="driving",
-            )
-            if "destination=" in url:
-                _open_external(url)
-            else:
-                st.error("Home is not set. Ask the caregiver to save Home in GPS / Home tab.")
-
-    # Row 2: Family Doctor, Daily Market, Hospital, Mother's Home (Home → POI)
-    row = st.columns(4)
-    for (key, label), col in zip(
-        [("family_doctor","Family Doctor"),
-         ("daily_market","Daily Market"),
-         ("hospital","Hospital"),
-         ("mothers_home","Mother's Home")],
-        row
-    ):
-        with col:
-            if st.button(label, key=f"pt_go_{key}"):
-                poi = pois.get(key, {})
-                p_lat = poi.get("lat") or ""
-                p_lon = poi.get("lon") or ""
-                try:
-                    if (not p_lat or not p_lon) and home_lat and home_lon:
-                        hlat = float(home_lat)
-                        hlon = float(home_lon)
-                        off_lat, off_lon = _offset_point(hlat, hlon, km_north=3.5, km_east=3.5)
-                        p_lat, p_lon = f"{off_lat:.6f}", f"{off_lon:.6f}"
-                    url = _build_dir_url(
-                        origin_lat=home_lat if home_lat else None,   # Home → POI
-                        origin_lon=home_lon if home_lon else None,
-                        dest_lat=p_lat if p_lat else None,
-                        dest_lon=p_lon if p_lon else None,
-                        mode="driving",
-                    )
+        # Row 1: Back to Home (device GPS → Home)
+        c1, c2, c3, c4 = st.columns(4)
+        with c1:
+            if st.button("🏠 Back to Home"):
+                url = _build_dir_url(
+                    origin_lat=None, origin_lon=None,  # device GPS
+                    dest_lat=home_lat if home_lat else None,
+                    dest_lon=home_lon if home_lon else None,
+                    mode="driving",
+                )
+                if "destination=" in url:
                     _open_external(url)
-                except Exception:
-                    st.error("Please ask the caregiver to set this place in GPS / Home tab.")
+                else:
+                    st.error("Home is not set. Ask the caregiver to save Home in GPS / Home tab.")
+
+        # Row 2: Family Doctor, Daily Market, Hospital, Mother's Home (Home → POI)
+        row = st.columns(4)
+        for (key, label), col in zip(
+            [("family_doctor","Family Doctor"),
+             ("daily_market","Daily Market"),
+             ("hospital","Hospital"),
+             ("mothers_home","Mother's Home")],
+            row
+        ):
+            with col:
+                if st.button(label, key=f"pt_go_{key}"):
+                    poi = pois.get(key, {})
+                    p_lat = poi.get("lat") or ""
+                    p_lon = poi.get("lon") or ""
+                    try:
+                        if (not p_lat or not p_lon) and home_lat and home_lon:
+                            hlat = float(home_lat); hlon = float(home_lon)
+                            off_lat, off_lon = _offset_point(hlat, hlon, km_north=3.5, km_east=3.5)
+                            p_lat, p_lon = f"{off_lat:.6f}", f"{off_lon:.6f}"
+                        url = _build_dir_url(
+                            origin_lat=home_lat if home_lat else None,   # Home → POI
+                            origin_lon=home_lon if home_lon else None,
+                            dest_lat=p_lat if p_lat else None,
+                            dest_lon=p_lon if p_lon else None,
+                            mode="driving",
+                        )
+                        _open_external(url)
+                    except Exception:
+                        st.error("Please ask the caregiver to set this place in GPS / Home tab.")
+
 
 
     # AI Chatbot
@@ -1391,6 +1391,7 @@ else:
                 """,
                 unsafe_allow_html=True,
             )
+
 
 
 
