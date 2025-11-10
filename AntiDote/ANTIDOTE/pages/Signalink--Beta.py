@@ -12,6 +12,14 @@ import numpy as np
 import streamlit as st
 from PIL import Image
 
+# ===== small compatibility helper for rerun =====
+def _rerun():
+    # Prefer st.rerun() (new), fallback to st.experimental_rerun() (old)
+    if hasattr(st, "rerun"):
+        st.rerun()
+    else:
+        st.experimental_rerun()
+
 # ===== Optional deps (we show install hints if missing) =====
 MISSING = []
 try:
@@ -24,7 +32,7 @@ try:
     import cv2
     cv2.setUseOptimized(True)
     try:
-        cv2.setNumThreads(2)  # tweak if CPU contention is high
+        cv2.setNumThreads(2)
     except Exception:
         pass
 except Exception:
@@ -45,7 +53,6 @@ except Exception:
 
 # --------------------------------------------------
 # 1) PATHS / ASSETS
-#    (Repo-aware: this file lives in ANTIDOTE/pages/, repo root is parents[1])
 # --------------------------------------------------
 REPO_ROOT = Path(__file__).resolve().parents[1]  # .../ANTIDOTE
 SIGNALINK_ASSETS = (REPO_ROOT / "signalink_assets")
@@ -56,7 +63,7 @@ IMAGES_DIR.mkdir(parents=True, exist_ok=True)
 GESTURE_DB_PATH = SIGNALINK_ASSETS / "gesture_db.json"  # KNN training samples
 MODEL_STATE_KEY = "signalink_knn_model"
 
-# Demo dataset (you can add more under signalink_assets/images and list here)
+# Demo dataset (expand with your own images in signalink_assets/images)
 SIGN_DATA = [
     {"word": "Hello",     "category": "Basic",  "image": str(IMAGES_DIR / "hello.png"),     "hint": "Hand up, small wave."},
     {"word": "Thank you", "category": "Basic",  "image": str(IMAGES_DIR / "thankyou.png"),  "hint": "From chin outward."},
@@ -109,7 +116,6 @@ st.markdown(
     .cta .stButton>button:hover { transform: translateY(-2px); filter: brightness(1.04) saturate(1.03); }
     .cta .stButton>button:active { transform: translateY(0); filter: brightness(0.98); }
 
-    /* Cards, pills */
     .sign-card {
       background: rgba(3,16,22,.45);
       border: 1px solid rgba(255,255,255,.08);
@@ -287,15 +293,14 @@ def _webrtc_mode_any():
 # --------------------------------------------------
 if not st.session_state.signalink_started:
     st.markdown("<h1 style='text-align:center; margin-top:10px;'>🤟 SIGNALINK</h1>", unsafe_allow_html=True)
-    # Right-aligned buttons
     if right_aligned_button("📚 Learn Signs", key="cta_learn", css_class="learn"):
         st.session_state.signalink_started = True
         st.session_state.signalink_route = "learn"
-        st.experimental_rerun()
+        _rerun()
     if right_aligned_button("✋ Sign to Text Translator", key="cta_translator", css_class="signtext"):
         st.session_state.signalink_started = True
         st.session_state.signalink_route = "translator"
-        st.experimental_rerun()
+        _rerun()
     st.stop()
 
 # --------------------------------------------------
@@ -366,7 +371,7 @@ if route == "learn":
                 st.session_state.learn_progress["quiz_scores"].append({"word": item["word"], "correct": False})
         if col_b.button("Next"):
             st.session_state.practice_idx += 1
-            st.experimental_rerun()
+            _rerun()
 
     # PROGRESS
     with tab_progress:
