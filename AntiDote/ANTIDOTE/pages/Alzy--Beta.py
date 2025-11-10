@@ -751,10 +751,10 @@ if st.session_state.role is None:
     st.markdown("<p style='text-align:center;'>Who are you?</p>", unsafe_allow_html=True)
     c1, c2 = st.columns(2)
     with c1:
-        if st.button("🧑‍🦽 Patient", width=140, key="choose_patient"):
+            if st.button("🧑‍🦽 Patient", use_container_width=True, key="choose_patient"):
             st.session_state.role = "patient"; st.rerun()
     with c2:
-        if st.button("🧑‍⚕️ Caregiver", width=140, key="choose_caregiver"):
+           if st.button("🧑‍⚕️ Caregiver", use_container_width=True, key="choose_caregiver"):
             st.session_state.role = "caretaker"; st.rerun()
     st.stop()
 
@@ -978,7 +978,8 @@ else:
     # Quiz (prefer due; fallback to all people synced from memory book)
     # Quiz (simple)
     with tab_quiz:
-    _render_quiz_simple()
+        _render_quiz_simple()
+
 
     # Memory Book (patient view – read-only gallery)
     with tab_mbook:
@@ -1091,6 +1092,7 @@ else:
                 """,
                 unsafe_allow_html=True,
             )
+
 
 
 
