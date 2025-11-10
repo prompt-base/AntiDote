@@ -538,26 +538,26 @@ if qp_role in ("patient", "caretaker"):
 # ------------------------------------------------------------
 # replaces your current _render_thumb
 def _render_thumb(path: str) -> None:
-    """Uniform thumbnail: fixed box with object-fit cover; no extra wrapper divs."""
+    """Render a small thumbnail with a fixed target height (cropped/resized via PIL)."""
     rp = resolve_path(path)
     if image_exists(path):
         try:
-            with open(rp, "rb") as f:
-                b64 = base64.b64encode(f.read()).decode("ascii")
-            # Single HTML block so we don't create stray empty divs
-            st.markdown(
-                f"""
-                <div class="alzy-thumb">
-                  <img src="data:image/*;base64,{b64}" alt="thumb"/>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
+            img = Image.open(rp).convert("RGB")
+            target_h = 190  # increase this to make taller thumbnails (was ~170)
+            # keep aspect ratio by scaling width accordingly
+            scale = target_h / float(img.height if img.height else 1)
+            target_w = max(1, int(img.width * scale))
+            # resize with good quality
+            img = img.resize((target_w, target_h), Image.LANCZOS)
+            st.image(img, use_container_width=False)
         except Exception:
-            # fallback if file read fails
-            st.image(rp, width=180)
+            # fallback to a wider render (still taller due to aspect)
+            st.image(rp, width=220)
     else:
-        st.markdown('<div class="noimg">No image</div>', unsafe_allow_html=True)
+        st.markdown(
+            '<div class="noimg" style="height: 170px;">No image</div>',
+            unsafe_allow_html=True
+        )
 
 
 def _render_audio(audio_path: str):
@@ -1153,6 +1153,7 @@ else:
                 """,
                 unsafe_allow_html=True,
             )
+
 
 
 
