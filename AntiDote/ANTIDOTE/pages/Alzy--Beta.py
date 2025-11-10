@@ -751,11 +751,11 @@ if st.session_state.role is None:
     st.markdown("<p style='text-align:center;'>Who are you?</p>", unsafe_allow_html=True)
     c1, c2 = st.columns(2)
     with c1:
-            if st.button("🧑‍🦽 Patient", use_container_width=True, key="choose_patient"):
-            st.session_state.role = "patient"; st.rerun()
+            if st.button("🧑‍🦽 Patient", key="choose_patient"):
+                st.session_state.role = "patient"; st.rerun()
     with c2:
-           if st.button("🧑‍⚕️ Caregiver", use_container_width=True, key="choose_caregiver"):
-            st.session_state.role = "caretaker"; st.rerun()
+           if st.button("🧑‍⚕️ Caregiver", key="choose_caregiver"):
+                st.session_state.role = "caretaker"; st.rerun()
     st.stop()
 
 # ------------------------------------------------------------
@@ -1092,6 +1092,7 @@ else:
                 """,
                 unsafe_allow_html=True,
             )
+
 
 
 
