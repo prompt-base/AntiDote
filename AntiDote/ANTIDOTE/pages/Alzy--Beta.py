@@ -445,10 +445,10 @@ st.markdown(
 
 /* Make thumbs even smaller on narrow screens; slightly larger on wide screens */
 @media (max-width: 640px) {
-  .alzy-thumb { width: 120px; height: 90px; }
+  .alzy-thumb { width: 130px; height: 96px; }
 }
 @media (min-width: 1400px) {
-  .alzy-thumb { width: 160px; height: 120px; }
+  .alzy-thumb { width: 170px; height: 124px; }
 }
 
     .alzy-meta { flex: 1 1 auto; min-width: 0; }
@@ -496,6 +496,18 @@ st.markdown(
   margin-top: 6px;
 }
     audio { width: 100%; max-width: 260px; }
+    hr.thick {
+  border: 0;
+  height: 3px;                         /* thicker line */
+  background: linear-gradient(
+    90deg,
+    rgba(255,255,255,0.12),
+    rgba(255,255,255,0.22),
+    rgba(255,255,255,0.12)
+  );
+  margin: 10px 0 14px 0;               /* more breathing room */
+  border-radius: 2px;
+}
     </style>
     """,
     unsafe_allow_html=True,
@@ -524,10 +536,26 @@ if qp_role in ("patient", "caretaker"):
 # ------------------------------------------------------------
 # SHARED RENDER HELPERS
 # ------------------------------------------------------------
+# replaces your current _render_thumb
 def _render_thumb(path: str) -> None:
+    """Uniform thumbnail: fixed box with object-fit cover; no extra wrapper divs."""
     rp = resolve_path(path)
     if image_exists(path):
-        st.image(rp, width=140)  # fixed small size
+        try:
+            with open(rp, "rb") as f:
+                b64 = base64.b64encode(f.read()).decode("ascii")
+            # Single HTML block so we don't create stray empty divs
+            st.markdown(
+                f"""
+                <div class="alzy-thumb">
+                  <img src="data:image/*;base64,{b64}" alt="thumb"/>
+                </div>
+                """,
+                unsafe_allow_html=True,
+            )
+        except Exception:
+            # fallback if file read fails
+            st.image(rp, width=140)
     else:
         st.markdown('<div class="noimg">No image</div>', unsafe_allow_html=True)
 
@@ -606,7 +634,7 @@ def _render_reminder_card(
                         save_runtime_data(data)
                         st.rerun()
 
-        st.divider()
+        st.markdown("<hr class='thick' />", unsafe_allow_html=True)
 
 
 def _render_due_and_coming(
@@ -1125,6 +1153,7 @@ else:
                 """,
                 unsafe_allow_html=True,
             )
+
 
 
 
