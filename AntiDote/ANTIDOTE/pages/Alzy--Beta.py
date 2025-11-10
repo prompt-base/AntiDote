@@ -438,11 +438,10 @@ def _offset_point(lat: float, lon: float, km_north: float = 0.0, km_east: float 
     Good enough to synthesize a ~5km sample point.
     """
     import math
-    if lat is None or lon is None:
-        return None, None
     dlat = km_north / 111.0
     dlon = km_east / (111.0 * max(0.1, abs(math.cos(math.radians(lat)))))
     return lat + dlat, lon + dlon
+
 
 # ------------------------------------------------------------
 # PAGE CONFIG + CSS
@@ -550,7 +549,6 @@ st.markdown(
 if "data" not in st.session_state:
     st.session_state.data = load_merged_data()
 data = st.session_state.data
-
 # Ensure gps & favorite places schema exists
 data.setdefault("gps", {})
 data["gps"].setdefault("pois", {
@@ -560,7 +558,6 @@ data["gps"].setdefault("pois", {
     "mothers_home":  {"name": "Mother's Home", "lat": "", "lon": ""}
 })
 save_runtime_data(data)  # persist if it was missing
-
 
 if "role" not in st.session_state:
     st.session_state.role = None
@@ -978,62 +975,143 @@ if st.session_state.role == "caretaker":
     # GPS
     with tab_gps:
         st.subheader("📍 GPS / Home (IST time shown across app)")
-        cur = data.get("gps", {})
-        cur_home = cur.get("home_address", "")
-        cur_lat = cur.get("lat", "")
-        cur_lon = cur.get("lon", "")
 
-        st.write(f"Current saved home: **{cur_home or 'Not set'}**")
-        st.write(f"Lat/Lon: {cur_lat or '-'}, {cur_lon or '-'}")
+    cur = data.get("gps", {})
+    cur_home = cur.get("home_address", "")
+    cur_lat = cur.get("lat", "")
+    cur_lon = cur.get("lon", "")
 
-        components.html(
-            """
-            <button onclick="getGPS()" style="padding:8px 14px;border:none;background:#0ea5e9;color:white;border-radius:8px;cursor:pointer;">
-              📍 Get current location
-            </button>
-            <script>
-            function getGPS(){
-              if (!navigator.geolocation){ alert("Geolocation not supported"); return; }
-              navigator.geolocation.getCurrentPosition(function(pos){
-                const lat = pos.coords.latitude, lon = pos.coords.longitude;
-                const u = new URL(window.parent.location.href);
-                u.searchParams.set('lat', lat); u.searchParams.set('lon', lon);
-                window.parent.location.href = u.toString();
-              }, function(err){ alert(err.message); });
-            }
-            </script>
-            """,
-            height=70,
-        )
+    st.write(f"Current saved home: **{cur_home or 'Not set'}**")
+    st.write(f"Lat/Lon: {cur_lat or '-'}, {cur_lon or '-'}")
 
-        new_lat = get_qp("lat"); new_lon = get_qp("lon")
-        if new_lat and new_lon:
-            data["gps"]["lat"] = new_lat; data["gps"]["lon"] = new_lon
+    components.html(
+        """
+        <button onclick="getGPS()" style="padding:8px 14px;border:none;background:#0ea5e9;color:white;border-radius:8px;cursor:pointer;">
+          📍 Get current location
+        </button>
+        <script>
+        function getGPS(){
+          if (!navigator.geolocation){ alert("Geolocation not supported"); return; }
+          navigator.geolocation.getCurrentPosition(function(pos){
+            const lat = pos.coords.latitude, lon = pos.coords.longitude;
+            const u = new URL(window.parent.location.href);
+            u.searchParams.set('lat', lat); u.searchParams.set('lon', lon);
+            window.parent.location.href = u.toString();
+          }, function(err){ alert(err.message); });
+        }
+        </script>
+        """,
+        height=70,
+    )
+
+    new_lat = get_qp("lat")
+    new_lon = get_qp("lon")
+    if new_lat and new_lon:
+        data["gps"]["lat"] = new_lat
+        data["gps"]["lon"] = new_lon
+        save_runtime_data(data)
+        st.success(f"Saved location: {new_lat}, {new_lon}")
+
+    with st.form("set_home_form"):
+        addr = st.text_input("Home address", value=cur_home)
+        lat_in = st.text_input("Latitude", value=cur_lat)
+        lon_in = st.text_input("Longitude", value=cur_lon)
+        ok = st.form_submit_button("💾 Save home")
+        if ok:
+            data["gps"]["home_address"] = addr
+            data["gps"]["lat"] = lat_in
+            data["gps"]["lon"] = lon_in
             save_runtime_data(data)
-            st.success(f"Saved location: {new_lat}, {new_lon}")
+            st.success("Home saved")
 
-        with st.form("set_home_form"):
-            addr = st.text_input("Home address", value=cur_home)
-            lat_in = st.text_input("Latitude", value=cur_lat)
-            lon_in = st.text_input("Longitude", value=cur_lon)
-            ok = st.form_submit_button("💾 Save home")
-            if ok:
-                data["gps"]["home_address"] = addr; data["gps"]["lat"] = lat_in; data["gps"]["lon"] = lon_in
-                save_runtime_data(data); st.success("Home saved")
+    if cur_lat and cur_lon:
+        try:
+            la = float(cur_lat)
+            lo = float(cur_lon)
+            maps_url = f"https://www.google.com/maps?q={la},{lo}&z=15&output=embed"
+            components.html(
+                f'<iframe src="{maps_url}" width="100%" height="260" style="border:0" loading="lazy"></iframe>',
+                height=270,
+            )
+        except Exception:
+            pass
 
+    if st.button("🧭 Show directions to home"):
         if cur_lat and cur_lon:
-            try:
-                la = float(cur_lat); lo = float(cur_lon)
-                maps_url = f"https://www.google.com/maps?q={la},{lo}&z=15&output=embed"
-                components.html(
-                    f'<iframe src="{maps_url}" width="100%" height="260" style="border:0" loading="lazy"></iframe>',
-                    height=270,
-                )
-            except Exception:
-                pass
+            url = _build_dir_url(dest_lat=cur_lat, dest_lon=cur_lon, mode="driving")
+            _open_external(url)
+        else:
+            st.error("Please save Home first.")
 
-        if st.button("🧭 Show directions to home"):
-            components.html(f"<script>window.open('{GO_HOME_URL}', '_blank');</script>", height=0)
+    # --- Favorite Places (POIs) editor ---
+    st.divider()
+    st.subheader("⭐ Favorite Places (POIs)")
+
+    poi_keys = [
+        ("family_doctor", "Family Doctor"),
+        ("daily_market",  "Daily Market"),
+        ("hospital",      "Hospital"),
+        ("mothers_home",  "Mother's Home"),
+    ]
+    pois = data["gps"].get("pois", {})
+
+    with st.form("save_pois_form", clear_on_submit=False):
+        cols_hdr = st.columns([2, 1, 1])
+        with cols_hdr[0]:
+            st.markdown("**Place name**")
+        with cols_hdr[1]:
+            st.markdown("**Latitude**")
+        with cols_hdr[2]:
+            st.markdown("**Longitude**")
+
+        new_pois = {}
+        for key, label in poi_keys:
+            curp = pois.get(key, {"name": label, "lat": "", "lon": ""})
+            c1, c2, c3 = st.columns([2, 1, 1])
+            with c1:
+                name_val = st.text_input(f"{label} name", value=curp.get("name", ""), key=f"poi_name_{key}")
+            with c2:
+                lat_val = st.text_input(f"{label} lat", value=str(curp.get("lat", "")), key=f"poi_lat_{key}")
+            with c3:
+                lon_val = st.text_input(f"{label} lon", value=str(curp.get("lon", "")), key=f"poi_lon_{key}")
+            new_pois[key] = {
+                "name": (name_val or label).strip(),
+                "lat":  lat_val.strip(),
+                "lon":  lon_val.strip(),
+            }
+
+        if st.form_submit_button("💾 Save POIs"):
+            data["gps"]["pois"] = new_pois
+            save_runtime_data(data)
+            st.success("Favorite places saved.")
+
+    st.caption("Quick test: open driving directions Home → selected place")
+    home_lat = data["gps"].get("lat") or ""
+    home_lon = data["gps"].get("lon") or ""
+    cA, cB, cC, cD = st.columns(4)
+    for (key, label), col in zip(poi_keys, [cA, cB, cC, cD]):
+        with col:
+            if st.button(f"➡️ {label}", key=f"poi_go_{key}"):
+                poi = data["gps"]["pois"].get(key, {})
+                p_lat = poi.get("lat") or ""
+                p_lon = poi.get("lon") or ""
+                try:
+                    if (not p_lat or not p_lon) and home_lat and home_lon:
+                        hlat = float(home_lat)
+                        hlon = float(home_lon)
+                        off_lat, off_lon = _offset_point(hlat, hlon, km_north=3.5, km_east=3.5)
+                        p_lat, p_lon = f"{off_lat:.6f}", f"{off_lon:.6f}"
+                    url = _build_dir_url(
+                        origin_lat=home_lat if home_lat else None,
+                        origin_lon=home_lon if home_lon else None,
+                        dest_lat=p_lat if p_lat else None,
+                        dest_lon=p_lon if p_lon else None,
+                        mode="driving",
+                    )
+                    _open_external(url)
+                except Exception:
+                    st.error("Invalid coordinates. Please check Home and POI lat/lon.")
+
 
     # --- Caregiver: Favorite Places (POIs) editor ---
 st.divider()
@@ -1157,7 +1235,7 @@ else:
         _display_memory_book_gallery()
 
     # GPS
-    with tab_gps:
+   with tab_gps:
     st.subheader("📍 GPS (Patient)")
 
     gps = data.get("gps", {})
@@ -1187,8 +1265,10 @@ else:
     # Row 2: Family Doctor, Daily Market, Hospital, Mother's Home (Home → POI)
     row = st.columns(4)
     for (key, label), col in zip(
-        [("family_doctor","Family Doctor"), ("daily_market","Daily Market"),
-         ("hospital","Hospital"), ("mothers_home","Mother's Home")],
+        [("family_doctor","Family Doctor"),
+         ("daily_market","Daily Market"),
+         ("hospital","Hospital"),
+         ("mothers_home","Mother's Home")],
         row
     ):
         with col:
@@ -1197,12 +1277,11 @@ else:
                 p_lat = poi.get("lat") or ""
                 p_lon = poi.get("lon") or ""
                 try:
-                    # If POI is missing but Home is set, synthesize ~5km away so it still opens a route
                     if (not p_lat or not p_lon) and home_lat and home_lon:
-                        hlat = float(home_lat); hlon = float(home_lon)
+                        hlat = float(home_lat)
+                        hlon = float(home_lon)
                         off_lat, off_lon = _offset_point(hlat, hlon, km_north=3.5, km_east=3.5)
                         p_lat, p_lon = f"{off_lat:.6f}", f"{off_lon:.6f}"
-
                     url = _build_dir_url(
                         origin_lat=home_lat if home_lat else None,   # Home → POI
                         origin_lon=home_lon if home_lon else None,
@@ -1213,6 +1292,7 @@ else:
                     _open_external(url)
                 except Exception:
                     st.error("Please ask the caregiver to set this place in GPS / Home tab.")
+
 
     # AI Chatbot
     with tab_ai:
@@ -1311,6 +1391,7 @@ else:
                 """,
                 unsafe_allow_html=True,
             )
+
 
 
 
