@@ -7,6 +7,7 @@ import re
 import json
 import uuid
 import random
+import base64
 import datetime as dt
 from pathlib import Path
 from typing import Dict, Any, List, Optional
@@ -751,7 +752,7 @@ def _display_memory_book_gallery():
         for idx, img_path in enumerate(row):
             with cols[idx]:
                 # Image with hover zoom
-                _render_thumb_gallery(str(img_path))
+                _render_thumb(str(img_path))
 
                 # Resolve name/relation (prefer linked person)
                 ap = os.path.abspath(resolve_path(str(img_path)))
@@ -1124,6 +1125,7 @@ else:
                 """,
                 unsafe_allow_html=True,
             )
+
 
 
 
