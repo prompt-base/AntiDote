@@ -426,26 +426,20 @@ def _build_dir_url(
 ) -> str:
     """
     Build Google Maps directions URL.
-    - If use_current_origin is True, origin is set to 'Current Location' (device GPS).
-    - dir_action=navigate attempts to start turn-by-turn on mobile.
+    - If use_current_origin is True, origin='Current Location' (device GPS).
+    - dir_action=navigate tries to start turn-by-turn on mobile.
     """
     base = "https://www.google.com/maps/dir/?api=1"
     params = []
-
     if use_current_origin:
         params.append("origin=Current+Location")
     elif origin_lat and origin_lon:
         params.append(f"origin={origin_lat},{origin_lon}")
-
     if dest_lat and dest_lon:
         params.append(f"destination={dest_lat},{dest_lon}")
-
-    # 4-wheeler navigation
     params.append(f"travelmode={mode or 'driving'}")
     params.append("dir_action=navigate")
-
     return base + "&" + "&".join(params)
-
 
 def _offset_point(lat: float, lon: float, km_north: float = 0.0, km_east: float = 0.0) -> Tuple[float, float]:
     """
@@ -1003,16 +997,17 @@ if st.session_state.role == "caretaker":
             except Exception:
                 pass
 
-       if st.button("🧭 Show directions to home"):
-            if cur_lat and cur_lon:
-                url = _build_dir_url(
-                    use_current_origin=True,
-                    dest_lat=cur_lat, dest_lon=cur_lon,
-                    mode="driving",
-                )
-                _open_external(url)
-            else:
-                st.error("Please save Home first.")
+if st.button("🧭 Show directions to home"):
+    if cur_lat and cur_lon:
+        url = _build_dir_url(
+            use_current_origin=True,
+            dest_lat=cur_lat, dest_lon=cur_lon,
+            mode="driving",
+        )
+        _open_external(url)
+    else:
+        st.error("Please save Home first.")
+
 
 
         st.divider()
@@ -1133,8 +1128,9 @@ else:
         _display_memory_book_gallery()
 
     # GPS (PATIENT)
+    # GPS
     with tab_gps:
-        st.subheader("📍 Your Guide")
+        st.subheader("📍 GPS (Patient)")
 
         gps = data.get("gps", {})
         home_addr = gps.get("home_address", "")
@@ -1147,13 +1143,13 @@ else:
 
         # Row 1: Back to Home (device GPS → Home)
         c1, c2, c3, c4 = st.columns(4)
-       with c1:
+        with c1:
             if st.button("🏠 Back to Home"):
                 url = _build_dir_url(
-                    use_current_origin=True,          # 👈 device GPS as origin
+                    use_current_origin=True,          # device GPS as origin
                     dest_lat=home_lat if home_lat else None,
                     dest_lon=home_lon if home_lon else None,
-                    mode="driving",                   # 4-wheeler
+                    mode="driving",
                 )
                 if "destination=" in url:
                     _open_external(url)
@@ -1175,10 +1171,12 @@ else:
                     p_lat = poi.get("lat") or ""
                     p_lon = poi.get("lon") or ""
                     try:
+                        # If POI not set, synthesize a ~5km point from Home
                         if (not p_lat or not p_lon) and home_lat and home_lon:
                             hlat = float(home_lat); hlon = float(home_lon)
                             off_lat, off_lon = _offset_point(hlat, hlon, km_north=3.5, km_east=3.5)
                             p_lat, p_lon = f"{off_lat:.6f}", f"{off_lon:.6f}"
+
                         url = _build_dir_url(
                             origin_lat=home_lat if home_lat else None,   # Home → POI
                             origin_lon=home_lon if home_lon else None,
@@ -1287,5 +1285,6 @@ else:
                 """,
                 unsafe_allow_html=True,
             )
+
 
 
