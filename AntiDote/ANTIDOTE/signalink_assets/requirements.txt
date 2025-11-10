@@ -1,0 +1,8 @@
+# requirements.txt
+streamlit>=1.38
+streamlit-webrtc>=0.47
+opencv-python>=4.9
+mediapipe>=0.10
+scikit-learn>=1.4
+numpy>=1.26
+Pillow>=10.0
