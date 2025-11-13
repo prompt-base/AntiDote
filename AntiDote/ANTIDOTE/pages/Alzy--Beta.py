@@ -1321,11 +1321,12 @@ else:
                   const text = e.results[0][0].transcript;
                   status.textContent = "Heard: " + text;
                   try {
-                    // Use parent frame URL (like GPS code) so Streamlit sees the query param
-                    const frameWin = window.parent || window;
-                    const u = new URL(frameWin.location.href);
+                    // In Streamlit components, document.referrer is the *real* app URL
+                    const href = document.referrer || window.location.href;
+                    const u = new URL(href);
                     u.searchParams.set('say', text);
-                    frameWin.location.href = u.toString();
+                    // Navigate the top window so the main app sees ?say=
+                    window.top.location.href = u.toString();
                   } catch (err) {
                     console.error(err);
                     status.textContent = "❌ Could not send speech to app.";
@@ -1458,3 +1459,4 @@ else:
                 """,
                 height=80,
             )
+
