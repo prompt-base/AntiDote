@@ -1260,71 +1260,73 @@ else:
 
         with col_speak:
             # Speak button + status (uses browser SpeechRecognition)
-            components.html(
-                """
-                <div style="margin:8px 0 12px 0;">
-                  <button id="stt-btn" style="padding:6px 14px;border:none;background:#f97316;color:white;border-radius:8px;cursor:pointer;">
-                    🎤 Speak
-                  </button>
-                  <span id="stt-status" style="margin-left:8px;font-size:12px;color:#fff;"></span>
-                </div>
-                <script>
-                (function(){
-                  const btn    = document.getElementById("stt-btn");
-                  const status = document.getElementById("stt-status");
-                  if (!btn) return;
+components.html(
+    """
+    <div style="margin:8px 0 12px 0;">
+      <button id="stt-btn" style="padding:6px 14px;border:none;background:#f97316;color:white;border-radius:8px;cursor:pointer;">
+        🎤 Speak
+      </button>
+      <span id="stt-status" style="margin-left:8px;font-size:12px;color:#fff;"></span>
+    </div>
+    <script>
+    (function(){
+      const btn    = document.getElementById("stt-btn");
+      const status = document.getElementById("stt-status");
+      if (!btn) return;
 
-                  btn.addEventListener("click", function(){
-                    status.textContent = "";
-                    const isLocal = (location.hostname === "localhost" || location.hostname === "127.0.0.1");
-                    if (!window.isSecureContext && !isLocal){
-                      status.textContent = "❌ Mic blocked: use https or localhost.";
-                      return;
-                    }
-                    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-                    if (!SR){
-                      status.textContent = "❌ SpeechRecognition not supported.";
-                      return;
-                    }
-                    const rec = new SR();
-                    rec.lang = "en-US";
+      btn.addEventListener("click", function(){
+        status.textContent = "";
+        const isLocal = (location.hostname === "localhost" || location.hostname === "127.0.0.1");
+        if (!window.isSecureContext && !isLocal){
+          status.textContent = "❌ Mic blocked: use https or localhost.";
+          return;
+        }
+        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SR){
+          status.textContent = "❌ SpeechRecognition not supported.";
+          return;
+        }
+        const rec = new SR();
+        rec.lang = "en-US";
 
-                    rec.onstart = function(){
-                      status.textContent = "Listening...";
-                    };
-                    rec.onerror = function(e){
-                      status.textContent = "❌ " + (e.error || "Error");
-                    };
-                    rec.onend = function(){
-                      if (status.textContent === "Listening...") {
-                        status.textContent = "";
-                      }
-                    };
-                    rec.onresult = function(e){
-                      const text = e.results[0][0].transcript;
-                      status.textContent = "Heard: " + text;
-                      try {
-                        // Try to use the parent window URL (like your GPS button)
-                        var parentWin = window.parent || window;
-                        var href = parentWin.location.href || "";
-                        // Simple string-based query param append/replace for ?say=
-                        var sep = href.indexOf("?") === -1 ? "?" : "&";
-                        // Remove any existing ?say= first to avoid duplicates
-                        var newHref = href.replace(/([?&])say=[^&]*/g, "$1").replace(/[?&]$/, "");
-                        newHref += sep + "say=" + encodeURIComponent(text);
-                        parentWin.location.href = newHref;
-                      } catch (err) {
-                        console.error(err);
-                        status.textContent = "❌ Could not send speech to app: " + (err && err.message ? err.message : err);
-                      }
-                    };
-                    rec.start();
-                  });
-                })();
-                </script>
-                """,
-                height=110,
-            )
+        rec.onstart = function(){
+          status.textContent = "Listening...";
+        };
+        rec.onerror = function(e){
+          status.textContent = "❌ " + (e.error || "Error");
+        };
+        rec.onend = function(){
+          if (status.textContent === "Listening...") {
+            status.textContent = "";
+          }
+        };
+        rec.onresult = function(e){
+          const text = e.results[0][0].transcript;
+          status.textContent = "Heard: " + text;
+          try {
+            // Build new URL with ?say=... based on top window URL
+            var topWin = window.top || window;
+            var href = topWin.location && topWin.location.href ? topWin.location.href : "";
+
+            // Simple query-param handling for say=
+            var sep = href.indexOf("?") === -1 ? "?" : "&";
+            var newHref = href.replace(/([?&])say=[^&]*/g, "$1").replace(/[?&]$/, "");
+            newHref += sep + "say=" + encodeURIComponent(text);
+
+            // Navigate TOP window (avoids direct parent.location assignment)
+            window.open(newHref, "_top");
+          } catch (err) {
+            console.error(err);
+            status.textContent = "❌ Could not send speech to app: " + (err && err.message ? err.message : err);
+          }
+        };
+        rec.start();
+      });
+    })();
+    </script>
+    """,
+    height=110,
+)
 
         with col_clear:
             if st.button("🧹 Clear previous"):
@@ -1439,3 +1441,4 @@ else:
                 """,
                 unsafe_allow_html=True,
             )
+
