@@ -7,7 +7,6 @@ import re
 import json
 import uuid
 import random
-import base64
 import datetime as dt
 from pathlib import Path
 from typing import Dict, Any, List, Optional
@@ -27,22 +26,18 @@ except Exception:
 # ------------------------------------------------------------
 PROJECT_DIR = Path(__file__).parent                   # ANTIDOTE/pages
 APP_DIR = PROJECT_DIR.parent                          # ANTIDOTE
-REPO_ROOT = APP_DIR                                   # project root (where data.json & uploads live)
+REPO_ROOT = APP_DIR                                   # project root
 
-# Base scratch area for runtime uploads
 UPLOAD_BASE = Path("/tmp/alzy_uploads")
 UPLOAD_BASE.mkdir(parents=True, exist_ok=True)
 
-# Activity / Medicine / MemoryBook specific runtime dirs
 ACTIVITY_IMG_DIR = UPLOAD_BASE / "activity_images"
 MEDICINE_IMG_DIR = UPLOAD_BASE / "medicine_images"
 MBOOK_IMG_DIR    = UPLOAD_BASE / "memory_book_images"
 AUDIO_DIR        = UPLOAD_BASE / "audio"
-
 for p in (ACTIVITY_IMG_DIR, MEDICINE_IMG_DIR, MBOOK_IMG_DIR, AUDIO_DIR):
     p.mkdir(parents=True, exist_ok=True)
 
-# Baseline file (repo) + Runtime file (temp)
 BASELINE_FILE_CANDIDATES = [
     REPO_ROOT / "data.json",
     APP_DIR / "data.json",
@@ -52,21 +47,18 @@ RUNTIME_FILE = PROJECT_DIR / ".data_temp.json"
 if not RUNTIME_FILE.exists():
     RUNTIME_FILE.write_text("{}", encoding="utf-8")
 
-# Default timezone (IST)
 IST = ZoneInfo("Asia/Kolkata") if ZoneInfo else None
 
 # ------------------------------------------------------------
-# SAFE API KEY LOADING (works local + Streamlit Cloud)
+# API KEY
 # ------------------------------------------------------------
 def _load_api_key() -> str:
-    # 1) Streamlit Secrets
     try:
         k = st.secrets.get("OPENAI_API_KEY")
         if k:
             return k.strip()
     except Exception:
         pass
-    # 2) .env (optional)
     try:
         from dotenv import load_dotenv
         env_path = REPO_ROOT / ".env"
@@ -76,20 +68,18 @@ def _load_api_key() -> str:
             load_dotenv(override=True)
     except Exception:
         pass
-    # 3) Plain env
     return (os.getenv("OPENAI_API_KEY") or "").strip()
 
 OPENAI_API_KEY = _load_api_key()
 
 # ------------------------------------------------------------
-# TIME HELPERS (consistent IST)
+# TIME HELPERS
 # ------------------------------------------------------------
 def now_local() -> dt.datetime:
     n = dt.datetime.now(tz=IST) if IST else dt.datetime.now()
     return n.replace(microsecond=0)
 
 def parse_iso(ts: str) -> dt.datetime:
-    """Treat stored ISO strings as IST wall-time if naive; convert to IST if aware."""
     try:
         v = dt.datetime.fromisoformat(ts)
         if v.tzinfo is None:
@@ -110,31 +100,33 @@ def human_time(dt_iso: str) -> str:
     except Exception:
         return dt_iso
 
-# >>> FIX: helpers for date/time awareness
 def _today_ist_str() -> str:
     d = now_local()
-    # Example: Monday, 10 November 2025 • 03:25 PM IST
     return d.strftime("%A, %d %B %Y • %I:%M %p IST")
 
-_DATE_TIME_PAT = re.compile(r"\b(what(?:'s| is)?\s*(?:the\s*)?(?:date|day|time)|today|todays|date|time|day)\b", re.I)
+_DATE_TIME_PAT = re.compile(
+    r"\b(what(?:'s| is)?\s*(?:the\s*)?(?:date|day|time)|today|todays|date|time|day)\b", re.I
+)
 def _looks_like_datetime_question(text: str) -> bool:
     return bool(_DATE_TIME_PAT.search(text or ""))
 
+def _clear_say_query_param():
+    try:
+        qp = dict(st.query_params)
+        if "say" in qp:
+            qp.pop("say")
+            st.experimental_set_query_params(**qp)
+    except Exception:
+        pass
+
 # ------------------------------------------------------------
-# PATH RESOLUTION HELPERS (baseline-relative media)
+# PATH & IO
 # ------------------------------------------------------------
 def resolve_path(p: str) -> str:
-    """Return absolute path for media:
-    - absolute path => unchanged if exists
-    - relative (e.g., 'uploads/images/...') => try REPO_ROOT, APP_DIR, PROJECT_DIR
-    - otherwise return original
-    """
     if not p:
         return ""
-    # absolute and exists
     if os.path.isabs(p) and os.path.exists(p):
         return p
-    # try common bases
     for base in (REPO_ROOT, APP_DIR, PROJECT_DIR):
         candidate = (base / p).resolve()
         if os.path.exists(candidate):
@@ -146,7 +138,7 @@ def image_exists(path: str) -> bool:
     return bool(rp and os.path.exists(rp))
 
 # ------------------------------------------------------------
-# DATA LOAD & MERGE
+# DATA
 # ------------------------------------------------------------
 def default_data() -> Dict[str, Any]:
     return {
@@ -154,7 +146,17 @@ def default_data() -> Dict[str, Any]:
         "reminders": {},
         "people": {},
         "logs": [],
-        "gps": {"home_address": "", "lat": "", "lon": ""},
+        "gps": {
+            "home_address": "",
+            "lat": "",
+            "lon": "",
+            "pois": {
+                "family_doctor": {"name": "Family Doctor", "lat": "", "lon": ""},
+                "daily_market":  {"name": "Daily Market",  "lat": "", "lon": ""},
+                "hospital":      {"name": "Hospital",      "lat": "", "lon": ""},
+                "mothers_home":  {"name": "Mother's Home", "lat": "", "lon": ""},
+            }
+        },
         "memory_book_images": [],
     }
 
@@ -173,15 +175,12 @@ def _find_baseline_file() -> Optional[Path]:
     return None
 
 def _merge_maps(baseline: Dict[str, Any], runtime: Dict[str, Any], key: str) -> Dict[str, Any]:
-    """Merge dicts of objects by ID. Runtime overrides baseline."""
     out = dict(baseline.get(key, {}))
     out.update(runtime.get(key, {}))
     return out
 
 def _merge_lists_latest_first(b_list: List[str], r_list: List[str]) -> List[str]:
-    """Concatenate runtime first (latest), then baseline; remove duplicates preserving order."""
-    seen = set()
-    out: List[str] = []
+    seen, out = set(), []
     for s in (r_list or []) + (b_list or []):
         if s not in seen:
             seen.add(s)
@@ -194,25 +193,28 @@ def load_merged_data() -> Dict[str, Any]:
     runtime = _read_json(RUNTIME_FILE)
 
     data = default_data()
-    # shallow keys
     data["profile"] = baseline.get("profile") or data["profile"]
-    data["gps"] = baseline.get("gps") or data["gps"]
-    data["logs"] = baseline.get("logs") or data["logs"]
 
-    # merged maps
+    if "gps" in baseline:
+        data["gps"].update({k: v for k, v in baseline["gps"].items() if k != "pois"})
+        if isinstance(baseline["gps"].get("pois"), dict):
+            data["gps"]["pois"].update(baseline["gps"]["pois"])
+
     data["reminders"] = _merge_maps(baseline, runtime, "reminders")
-    data["people"] = _merge_maps(baseline, runtime, "people")
+    data["people"]    = _merge_maps(baseline, runtime, "people")
 
-    # merged memory book index (paths)
     data["memory_book_images"] = _merge_lists_latest_first(
         baseline.get("memory_book_images", []),
         runtime.get("memory_book_images", []),
     )
 
+    if "gps" in runtime:
+        data["gps"].update({k: v for k, v in runtime["gps"].items() if k != "pois"})
+        if isinstance(runtime["gps"].get("pois"), dict):
+            data["gps"]["pois"].update(runtime["gps"]["pois"])
     return data
 
 def save_runtime_data(data: Dict[str, Any]) -> None:
-    # only persist dynamic keys (don't overwrite baseline)
     dyn = {
         "profile": data.get("profile", {}),
         "gps": data.get("gps", {}),
@@ -228,7 +230,7 @@ def save_runtime_data(data: Dict[str, Any]) -> None:
     st.session_state.data = data
 
 # ------------------------------------------------------------
-# OTHER HELPERS
+# HELPERS
 # ------------------------------------------------------------
 def _slugify(s: str) -> str:
     s = (s or "").strip().lower()
@@ -240,43 +242,27 @@ def save_upload_to(upload, folder: Path, name_hint: Optional[str] = None) -> str
         return ""
     folder.mkdir(parents=True, exist_ok=True)
     ext = Path(upload.name).suffix.lower()
-    stem_hint = name_hint or Path(upload.name).stem
-    stem = _slugify(stem_hint)
+    stem = _slugify(name_hint or Path(upload.name).stem)
     fname = f"{stem}-{uuid.uuid4().hex[:8]}{ext}"
     path = folder / fname
     with open(path, "wb") as f:
         f.write(upload.read())
     return str(path)
 
-# Spaced repetition
 SR_INTERVALS = [1, 2, 4, 7, 14, 30]
 def next_sr_due(stage: int) -> dt.datetime:
     stage = max(1, stage)
     idx = min(stage, len(SR_INTERVALS)) - 1
     return now_local() + dt.timedelta(days=SR_INTERVALS[idx])
 
-def add_reminder(
-    data: Dict[str, Any],
-    title: str,
-    when_dt: dt.datetime,
-    image_path: str,
-    audio_path: str,
-    steps: List[str],
-    repeat_rule: str,
-    reminder_type: str = "activity",
-):
+def add_reminder(data, title, when_dt, image_path, audio_path, steps, repeat_rule, reminder_type="activity"):
     rid = uuid.uuid4().hex
     data["reminders"][rid] = {
-        "id": rid,
-        "title": title,
-        "when_iso": to_iso(when_dt),
-        "next_due_iso": to_iso(when_dt),
-        "repeat_rule": repeat_rule,
-        "stage": 1,
-        "image_path": image_path,
-        "audio_path": audio_path,
-        "steps": steps or [],
-        "reminder_type": reminder_type,
+        "id": rid, "title": title,
+        "when_iso": to_iso(when_dt), "next_due_iso": to_iso(when_dt),
+        "repeat_rule": repeat_rule, "stage": 1,
+        "image_path": image_path, "audio_path": audio_path,
+        "steps": steps or [], "reminder_type": reminder_type,
     }
     save_runtime_data(data)
 
@@ -304,11 +290,8 @@ def snooze_reminder(rec: Dict[str, Any], minutes: int = 10):
 def add_person(data: Dict[str, Any], name: str, relation: str, image_path: str):
     pid = uuid.uuid4().hex
     data["people"][pid] = {
-        "id": pid,
-        "name": name,
-        "relation": relation,
-        "image_path": image_path,
-        "stage": 1,
+        "id": pid, "name": name, "relation": relation,
+        "image_path": image_path, "stage": 1,
         "next_due_iso": to_iso(next_sr_due(1)),
     }
     save_runtime_data(data)
@@ -324,17 +307,11 @@ def mark_quiz_result(data: Dict[str, Any], person_id: str, correct: bool):
 def add_log(data: Dict[str, Any], reminder: Dict[str, Any], action: str):
     data.setdefault("logs", [])
     data["logs"].append(
-        {
-            "time": to_iso(now_local()),
-            "title": reminder.get("title"),
-            "id": reminder.get("id"),
-            "type": reminder.get("reminder_type", "activity"),
-            "action": action,
-        }
+        {"time": to_iso(now_local()), "title": reminder.get("title"), "id": reminder.get("id"),
+         "type": reminder.get("reminder_type", "activity"), "action": action}
     )
     save_runtime_data(data)
 
-# Memory Book helpers
 def _file_mtime_or_zero(path: Path) -> float:
     try:
         return path.stat().st_mtime
@@ -342,65 +319,44 @@ def _file_mtime_or_zero(path: Path) -> float:
         return 0.0
 
 def get_memory_book_images() -> List[Path]:
-    """
-    Combine baseline memory_book_images plus runtime folder images.
-    Return list of Paths (existing), newest first.
-    """
     imgs: List[Path] = []
-
-    # Baseline-declared images (repo paths are relative to REPO_ROOT)
     baseline_paths = st.session_state.data.get("memory_book_images", [])
     for rel in baseline_paths:
         p = Path(resolve_path(rel)).resolve()
         if p.exists():
             imgs.append(p)
-
-    # Runtime uploaded images
     if MBOOK_IMG_DIR.exists():
         for f in MBOOK_IMG_DIR.iterdir():
             if f.suffix.lower() in (".jpg", ".jpeg", ".png", ".gif", ".webp"):
                 imgs.append(f.resolve())
-
-    # Deduplicate by absolute path, keep newest first
     uniq = {}
     for p in sorted(imgs, key=_file_mtime_or_zero, reverse=True):
         uniq[str(p)] = p
     return list(uniq.values())
 
 def ensure_people_from_memory_book(data: Dict[str, Any]) -> int:
-    """Ensure every Memory Book image has a Person entry. Do not force due dates."""
     imgs = get_memory_book_images()
     if not imgs:
         return 0
-
     existing_by_path = {
         os.path.abspath(resolve_path(p.get("image_path", ""))): pid
         for pid, p in data["people"].items()
         if p.get("image_path")
     }
-
     added = 0
     for img_path in imgs:
         ap = os.path.abspath(resolve_path(str(img_path)))
         if ap in existing_by_path:
             continue
-
         stem = Path(img_path).stem
-        # derive a friendly name prefix (before first dash)
         base = stem.split("-", 1)[0]
         nice = base.replace("-", " ").replace("_", " ").title() or "Family"
-
         pid = uuid.uuid4().hex
         data["people"][pid] = {
-            "id": pid,
-            "name": nice,
-            "relation": "Family",
-            "image_path": ap,
-            "stage": 1,
-            "next_due_iso": to_iso(next_sr_due(1)),
+            "id": pid, "name": nice, "relation": "Family",
+            "image_path": ap, "stage": 1, "next_due_iso": to_iso(next_sr_due(1)),
         }
         added += 1
-
     if added:
         save_runtime_data(data)
     return added
@@ -423,15 +379,11 @@ def read_audio_bytes(path: str) -> Optional[bytes]:
     except Exception:
         return None
 
-# --- GPS helpers (build Google Maps directions & open in new tab) ---
+# ---- GPS helpers ----
 def _open_external(url: str) -> None:
-    """Open a URL in a new browser tab from Streamlit."""
     components.html(f"<script>window.open('{url}', '_blank');</script>", height=0)
 
 def _build_dir_url(origin_lat=None, origin_lon=None, dest_lat=None, dest_lon=None, mode: str = "driving") -> str:
-    """
-    Build Google Maps directions URL. If origin is None, Google Maps uses device GPS.
-    """
     base = "https://www.google.com/maps/dir/?api=1"
     params = []
     if origin_lat and origin_lon:
@@ -442,10 +394,6 @@ def _build_dir_url(origin_lat=None, origin_lon=None, dest_lat=None, dest_lon=Non
     return base + "&" + "&".join(params)
 
 def _offset_point(lat: float, lon: float, km_north: float = 0.0, km_east: float = 0.0) -> tuple[float, float]:
-    """
-    Roughly offset a lat/lon by km. 1 deg lat ~111km, 1 deg lon ~111km*cos(lat).
-    Good enough to synthesize a ~5km sample point.
-    """
     import math
     dlat = km_north / 111.0
     dlon = km_east / (111.0 * max(0.1, abs(math.cos(math.radians(lat)))))
@@ -455,81 +403,49 @@ def _offset_point(lat: float, lon: float, km_north: float = 0.0, km_east: float 
 # PAGE CONFIG + CSS
 # ------------------------------------------------------------
 st.set_page_config(page_title="ALZY – Memory Assistant", page_icon="🧠", layout="wide")
-
 st.markdown(
     """
     <style>
-    :root{
-      --bg0:#0b1220; --bg1:#0f172a; --bg2:#111827; --card:#0b1020;
-      --brand:#7c3aed; --brand-2:#22d3ee; --ok:#10b981; --warn:#f59e0b; --danger:#ef4444;
-      --border:rgba(255,255,255,0.10); --muted:rgba(255,255,255,0.70);
-    }
+    :root{--bg0:#0b1220; --bg1:#0f172a; --bg2:#111827; --border:rgba(255,255,255,0.10); --muted:rgba(255,255,255,0.70); --brand:#7c3aed; --brand-2:#22d3ee;}
     .stApp { background: radial-gradient(1200px 600px at 10% -10%, #1e293b 0%, var(--bg0) 40%), linear-gradient(180deg, var(--bg0), var(--bg2)); color:#fff;}
     h1,h2,h3,h4 { color:#fff !important; letter-spacing:.2px }
-    .role-badge {
-      display:inline-flex; gap:.5rem; align-items:center;
-      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
-      border:1px solid var(--border); padding:6px 12px; border-radius:999px; font-size:.8rem;
-    }
-    .alzy-card {
-      background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.025));
-      border:1px solid var(--border); border-radius:14px; padding:12px 14px; box-shadow: 0 12px 28px rgba(0,0,0,.25); margin-bottom:10px;
-    }
-    .alzy-row { display:flex; gap:10px; align-items:flex-start; }
+    .role-badge {display:inline-flex; gap:.5rem; align-items:center; background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03)); border:1px solid var(--border); padding:6px 12px; border-radius:999px; font-size:.8rem;}
+    .alzy-card { background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.025)); border:1px solid var(--border); border-radius:14px; padding:12px 14px; box-shadow: 0 12px 28px rgba(0,0,0,.25); margin-bottom:10px;}
     .alzy-thumb { width: 170px; height: 130px; border-radius:12px; overflow:hidden; border:1px solid var(--border); flex: 0 0 auto; }
     .alzy-thumb img { width:100%; height:100%; object-fit:cover; display:block; }
     @media (max-width: 640px) { .alzy-thumb { width: 150px; height: 116px; } }
     @media (min-width: 1400px) { .alzy-thumb { width: 190px; height: 144px; } }
-
-    .alzy-meta { flex: 1 1 auto; min-width: 0; }
-    .alzy-actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
     .chip { display:inline-block; padding:2px 8px; font-size:.75rem; border-radius:999px; border:1px solid var(--border); color:var(--muted); }
-    .grid-2 { display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
-    .mb-0{margin-bottom:0} .mb-1{margin-bottom:.25rem} .mb-2{margin-bottom:.5rem} .mb-3{margin-bottom:1rem}
-    .stButton > button {
-      background-image: linear-gradient(90deg, var(--brand), var(--brand-2));
-      color: #061018 !important; border-radius: 10px !important; padding: 8px 12px !important; font-weight: 700; border:none;
-      box-shadow: 0 6px 16px rgba(124,58,237,.35);
-    }
-    .btn-ghost button { background:transparent !important; color:#fff !important; border:1px solid var(--border) !important; }
-    .btn-danger button { background:#ef4444 !important; color:#fff !important; }
-    .btn-warn button { background:#f59e0b !important; color:#111 !important; }
-    .noimg {
-      width: 170px; height: 150px; display:flex; align-items:center; justify-content:center; border-radius:12px; border:1px dashed var(--border); color:var(--muted);
-      font-size:.8rem; background:rgba(255,255,255,.03);
-    }
-    /* --- Memory Book gallery --- */
-    .mbook-thumb { width: 100%; aspect-ratio: 4 / 3; border-radius: 12px; overflow: hidden; border: 1px solid var(--border); background: rgba(255,255,255,.03); }
+    .mbook-thumb { width: 100%; aspect-ratio: 4/3; border-radius: 12px; overflow: hidden; border: 1px solid var(--border); background: rgba(255,255,255,.03); }
     .mbook-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform .25s ease; }
     .mbook-thumb:hover img { transform: scale(1.08); }
     .mbook-row-sep { height: 14px; border-top: 1px solid var(--border); margin: 8px 0 16px 0; }
     .mbook-name { margin-top: 6px; }
-    audio { width: 100%; max-width: 260px; }
-    hr.thick {
-      border: 0; height: 3px;
-      background: linear-gradient(90deg, rgba(255,255,255,0.12), rgba(255,255,255,0.22), rgba(255,255,255,0.12));
-      margin: 10px 0 14px 0; border-radius: 2px;
-    }
+    .stButton > button { background-image: linear-gradient(90deg, var(--brand), var(--brand-2)); color: #061018 !important; border-radius: 10px !important; padding: 8px 12px !important; font-weight: 700; border:none; box-shadow: 0 6px 16px rgba(124,58,237,.35); }
+    hr.thick { border: 0; height: 3px; background: linear-gradient(90deg, rgba(255,255,255,0.12), rgba(255,255,255,0.22), rgba(255,255,255,0.12)); margin: 10px 0 14px 0; border-radius: 2px; }
     </style>
     """,
     unsafe_allow_html=True,
 )
 
 # ------------------------------------------------------------
-# SESSION INIT (baseline + runtime merged)
+# SESSION INIT
 # ------------------------------------------------------------
 if "data" not in st.session_state:
     st.session_state.data = load_merged_data()
 data = st.session_state.data
-# Ensure gps & favorite places schema exists
+
 data.setdefault("gps", {})
+data["gps"].setdefault("home_address", "")
+data["gps"].setdefault("lat", "")
+data["gps"].setdefault("lon", "")
 data["gps"].setdefault("pois", {
     "family_doctor": {"name": "Family Doctor", "lat": "", "lon": ""},
     "daily_market":  {"name": "Daily Market",  "lat": "", "lon": ""},
     "hospital":      {"name": "Hospital",      "lat": "", "lon": ""},
     "mothers_home":  {"name": "Mother's Home", "lat": "", "lon": ""}
 })
-save_runtime_data(data)  # persist if it was missing
+save_runtime_data(data)
 
 if "role" not in st.session_state:
     st.session_state.role = None
@@ -539,16 +455,19 @@ if "patient_ai_chat" not in st.session_state:
         {"role": "assistant", "content": "Hello 👋 I'm your Memory Assistant. How can I help you today?"}
     ]
 
-# Support ?role=patient or ?role=caretaker
+if "prev_questions" not in st.session_state:
+    st.session_state.prev_questions = []
+if "chat_draft" not in st.session_state:
+    st.session_state.chat_draft = ""
+
 qp_role = get_qp("role")
 if qp_role in ("patient", "caretaker"):
     st.session_state.role = qp_role
 
 # ------------------------------------------------------------
-# SHARED RENDER HELPERS
+# RENDER HELPERS
 # ------------------------------------------------------------
 def _render_thumb(path: str) -> None:
-    """Render a small thumbnail with a fixed target height (cropped/resized via PIL)."""
     rp = resolve_path(path)
     if image_exists(path):
         try:
@@ -575,35 +494,24 @@ def _reminders_by_type(rem_type: str) -> List[Dict[str, Any]]:
     items = [r for r in data["reminders"].values() if r.get("reminder_type","activity")==rem_type]
     return sorted(items, key=lambda x: parse_iso(x.get("when_iso","1970-01-01T00:00:00")), reverse=True)
 
-def _render_reminder_card(
-    rec: Dict[str, Any],
-    slno: int,
-    is_caregiver: bool,
-    key_prefix: str,
-    show_actions: bool = True,
-) -> None:
+def _render_reminder_card(rec: Dict[str, Any], slno: int, is_caregiver: bool, key_prefix: str, show_actions: bool = True) -> None:
     with st.container():
         col_img, col_meta = st.columns([0.6, 1.4])
-
         with col_img:
             _render_thumb(rec.get("image_path", ""))
-
         with col_meta:
             st.markdown(f"**SL No:** {slno}")
             st.markdown(f"**Title:** {rec.get('title','(Untitled)')}")
             st.caption(human_time(rec.get("next_due_iso", "")))
-
             steps = rec.get("steps", [])
             if steps:
                 st.markdown("**Steps:**")
                 for i, s in enumerate(steps, 1):
                     st.write(f"{i}. {s}")
-
             audio_path = rec.get("audio_path")
             if audio_path:
                 st.markdown("**Audio:**")
                 _render_audio(audio_path)
-
             if show_actions:
                 c1, c2, c3 = st.columns(3)
                 with c1:
@@ -625,30 +533,21 @@ def _render_reminder_card(
                         data["reminders"].pop(rec["id"], None)
                         save_runtime_data(data)
                         st.rerun()
+    st.markdown("<hr class='thick' />", unsafe_allow_html=True)
 
-        st.markdown("<hr class='thick' />", unsafe_allow_html=True)
-
-def _render_due_and_coming(
-    is_caregiver: bool,
-    types: tuple = ("activity", "medicine"),
-    scope: str = "scope",
-) -> None:
+def _render_due_and_coming(is_caregiver: bool, types: tuple = ("activity", "medicine"), scope: str = "scope") -> None:
     now_ = now_local()
-    sections = [(t.title(), t) for t in types]
-
     st.subheader("🔔 Due now")
-    for _, t in sections:
+    for t in types:
         due = [r for r in _reminders_by_type(t) if reminder_due(r)]
         if not due:
             st.info("Nothing due.")
         else:
-            due = sorted(due, key=lambda x: parse_iso(x["next_due_iso"]))
-            for i, r in enumerate(due, 1):
+            for i, r in enumerate(sorted(due, key=lambda x: parse_iso(x["next_due_iso"])), 1):
                 _render_reminder_card(r, i, is_caregiver, key_prefix=f"{scope}_due_{t}", show_actions=True)
-
     st.subheader("🟡 Coming soon")
     horizon = now_ + dt.timedelta(hours=24)
-    for _, t in sections:
+    for t in types:
         upcoming = []
         for r in _reminders_by_type(t):
             d = parse_iso(r["next_due_iso"])
@@ -657,99 +556,22 @@ def _render_due_and_coming(
         if not upcoming:
             st.caption("No upcoming reminders.")
         else:
-            upcoming = sorted(upcoming, key=lambda x: parse_iso(x["next_due_iso"]))
-            for i, r in enumerate(upcoming, 1):
+            for i, r in enumerate(sorted(upcoming, key=lambda x: parse_iso(x["next_due_iso"])), 1):
                 _render_reminder_card(r, i, is_caregiver, key_prefix=f"{scope}_soon_{t}", show_actions=False)
-
-# --- QUIZ (simple & calm for ALZY) ---
-def _render_quiz_simple():
-    st.subheader("🧩 Face quiz")
-
-    if "quiz_target_id" not in st.session_state:
-        st.session_state.quiz_target_id = None
-        st.session_state.quiz_option_ids = []
-        st.session_state.quiz_feedback = None
-        st.session_state.quiz_is_correct = None
-
-    ensure_people_from_memory_book(data)
-
-    due = [
-        p for p in data["people"].values()
-        if parse_iso(p.get("next_due_iso", "2099-01-01T00:00:00")) <= now_local()
-    ]
-    pool = due if due else list(data["people"].values())
-
-    if not pool:
-        st.info("No Memory Book images found. Please add some in the Memory Book tab.")
-        return
-
-    if st.session_state.quiz_target_id is None:
-        target = random.choice(pool)
-        others = [p for p in data["people"].values() if p["id"] != target["id"]]
-        random.shuffle(others)
-        others = others[:2]
-        st.session_state.quiz_target_id = target["id"]
-        st.session_state.quiz_option_ids = [target["id"]] + [o["id"] for o in others]
-        st.session_state.quiz_feedback = None
-        st.session_state.quiz_is_correct = None
-
-    target = data["people"][st.session_state.quiz_target_id]
-
-    st.write("Who is this?")
-    _c1, _c2, _c3 = st.columns([1, 1.2, 1])
-    with _c2:
-        ip = target.get("image_path", "")
-        rp = resolve_path(ip)
-        if image_exists(ip):
-            st.image(rp, width=240)
-        else:
-            st.markdown('<div class="noimg">No image</div>', unsafe_allow_html=True)
-
-    option_people = [data["people"][pid] for pid in st.session_state.quiz_option_ids if pid in data["people"]]
-    random.shuffle(option_people)
-
-    st.markdown(" ")
-    colA, colB, colC = st.columns(3)
-    cols = [colA, colB, colC]
-
-    for i, p in enumerate(option_people):
-        label = f"{p['name']} — {p.get('relation', 'Family')}"
-        with cols[i]:
-            if st.button(label, key=f"quiz_ans_{p['id']}"):
-                is_correct = (p["id"] == target["id"])
-                mark_quiz_result(data, target["id"], is_correct)
-                st.session_state.quiz_is_correct = is_correct
-                st.session_state.quiz_feedback = "✅ Correct!" if is_correct else "❌ Not correct."
-
-    if st.session_state.quiz_feedback:
-        if st.session_state.quiz_is_correct:
-            st.success(st.session_state.quiz_feedback)
-        else:
-            st.error(st.session_state.quiz_feedback)
-
-        if st.button("➡️ Next face", key="quiz_next_face"):
-            st.session_state.quiz_target_id = None
-            st.session_state.quiz_option_ids = []
-            st.session_state.quiz_feedback = None
-            st.session_state.quiz_is_correct = None
-            st.rerun()
 
 def _display_memory_book_gallery():
     imgs = get_memory_book_images()
     if not imgs:
         st.info("No images found yet.")
         return
-
     def _chunks(seq, n):
         for i in range(0, len(seq), n):
             yield seq[i:i + n]
-
     for row in _chunks(imgs, 4):
         cols = st.columns(4, gap="small")
         for idx, img_path in enumerate(row):
             with cols[idx]:
                 _render_thumb(str(img_path))
-
                 ap = os.path.abspath(resolve_path(str(img_path)))
                 person = next(
                     (p for p in data["people"].values()
@@ -764,7 +586,6 @@ def _display_memory_book_gallery():
                     base = stem.split("-", 1)[0]
                     display_name = base.replace("-", " ").replace("_", " ").title() or "Family"
                     display_rel  = "Family"
-
                 st.markdown(
                     f'<div class="mbook-name"><strong>{display_name}</strong><br/><span class="chip">{display_rel}</span></div>',
                     unsafe_allow_html=True
@@ -772,7 +593,7 @@ def _display_memory_book_gallery():
         st.markdown('<div class="mbook-row-sep"></div>', unsafe_allow_html=True)
 
 # ------------------------------------------------------------
-# LANDING (choose role)
+# LANDING
 # ------------------------------------------------------------
 if st.session_state.role is None:
     st.markdown("<h1 style='text-align:center;'>🧠 ALZY – Memory Assistant</h1>", unsafe_allow_html=True)
@@ -787,7 +608,7 @@ if st.session_state.role is None:
     st.stop()
 
 # ------------------------------------------------------------
-# COMMON HEADER
+# HEADER
 # ------------------------------------------------------------
 st.title("🧠 ALZY – Memory Assistant")
 left, right = st.columns([4, 1])
@@ -808,10 +629,6 @@ with right:
 # ------------------------------------------------------------
 # CAREGIVER VIEW
 # ------------------------------------------------------------
-GO_HOME_URL = (
-    "https://www.google.com/maps/dir/?api=1&travelmode=driving"
-)
-
 if st.session_state.role == "caretaker":
     tab_home, tab_rem, tab_people, tab_logs, tab_gps, tab_mbook = st.tabs(
         ["🏠 Home", "⏰ Reminders", "👨‍👩‍👧 People", "📜 Logs", "📍 GPS / Home", "📘 Memory Book"]
@@ -825,14 +642,13 @@ if st.session_state.role == "caretaker":
         with st.form("add_rem_form", clear_on_submit=True):
             title = st.text_input("Title")
             d = st.date_input("Date", value=now_local().date())
-
             time_options = [f"{h:02d}:{m:02d}" for h in range(24) for m in range(0, 60, 5)]
             now_dt = now_local()
             default_time_str = f"{now_dt.hour:02d}:{(now_dt.minute//5)*5:02d}"
-            if default_time_str not in time_options: default_time_str = "23:55"
+            if default_time_str not in time_options:
+                default_time_str = "23:55"
             time_str = st.selectbox("Time", options=time_options, index=time_options.index(default_time_str))
             t = dt.time(int(time_str[:2]), int(time_str[3:]))
-
             img_up = st.file_uploader("Photo", type=["png", "jpg", "jpeg", "webp"])
             aud_up = st.file_uploader("Audio (mp3/wav/m4a)", type=["mp3", "wav", "m4a"])
             steps_txt = st.text_area("Steps (one per line)")
@@ -844,10 +660,7 @@ if st.session_state.role == "caretaker":
                     st.error("Title required")
                 else:
                     when_dt = dt.datetime.combine(d, t, tzinfo=IST) if IST else dt.datetime.combine(d, t)
-                    if img_up:
-                        img_path = save_upload_to(img_up, MEDICINE_IMG_DIR if rtype=="medicine" else ACTIVITY_IMG_DIR)
-                    else:
-                        img_path = ""
+                    img_path = save_upload_to(img_up, MEDICINE_IMG_DIR if rtype=="medicine" else ACTIVITY_IMG_DIR) if img_up else ""
                     aud_path = save_upload_to(aud_up, AUDIO_DIR) if aud_up else ""
                     steps = [s.strip() for s in steps_txt.splitlines() if s.strip()]
                     add_reminder(data, title, when_dt, img_path, aud_path, steps, rpt, reminder_type=rtype)
@@ -855,11 +668,7 @@ if st.session_state.role == "caretaker":
 
         st.divider()
         st.subheader("All reminders (latest first)")
-        all_rems = sorted(
-            list(data["reminders"].values()),
-            key=lambda x: parse_iso(x.get("when_iso","1970-01-01T00:00:00")),
-            reverse=True,
-        )
+        all_rems = sorted(list(data["reminders"].values()), key=lambda x: parse_iso(x.get("when_iso","1970-01-01T00:00:00")), reverse=True)
         for i, r in enumerate(all_rems, 1):
             with st.expander(f"{i}. {r['title']} — {human_time(r['next_due_iso'])}"):
                 st.json(r)
@@ -872,8 +681,7 @@ if st.session_state.role == "caretaker":
             st.info("No people added yet. Use the Memory Book tab to add photos.")
         else:
             ppl_sorted = sorted(
-                ppl,
-                key=lambda p: _file_mtime_or_zero(Path(resolve_path(p.get("image_path","")))) * -1,
+                ppl, key=lambda p: _file_mtime_or_zero(Path(resolve_path(p.get("image_path","")))) * -1,
             )
             cols = st.columns(2)
             for i, p in enumerate(ppl_sorted):
@@ -895,13 +703,9 @@ if st.session_state.role == "caretaker":
     with tab_gps:
         st.subheader("📍 GPS / Home (IST time shown across app)")
         cur = data.get("gps", {})
-        cur_home = cur.get("home_address", "")
-        cur_lat = cur.get("lat", "")
-        cur_lon = cur.get("lon", "")
-
+        cur_home = cur.get("home_address", ""); cur_lat = cur.get("lat", ""); cur_lon = cur.get("lon", "")
         st.write(f"Current saved home: **{cur_home or 'Not set'}**")
         st.write(f"Lat/Lon: {cur_lat or '-'}, {cur_lon or '-'}")
-
         components.html(
             """
             <button onclick="getGPS()" style="padding:8px 14px;border:none;background:#0ea5e9;color:white;border-radius:8px;cursor:pointer;">
@@ -921,7 +725,6 @@ if st.session_state.role == "caretaker":
             """,
             height=70,
         )
-
         new_lat = get_qp("lat"); new_lon = get_qp("lon")
         if new_lat and new_lon:
             data["gps"]["lat"] = new_lat; data["gps"]["lon"] = new_lon
@@ -964,44 +767,30 @@ if st.session_state.role == "caretaker":
             ("mothers_home",  "Mother's Home"),
         ]
         pois = data["gps"].get("pois", {})
-
         with st.form("save_pois_form", clear_on_submit=False):
             cols_hdr = st.columns([2, 1, 1])
             with cols_hdr[0]: st.markdown("**Place name**")
             with cols_hdr[1]: st.markdown("**Latitude**")
             with cols_hdr[2]: st.markdown("**Longitude**")
-
             new_pois = {}
             for key, label in poi_keys:
                 curp = pois.get(key, {"name": label, "lat": "", "lon": ""})
                 c1, c2, c3 = st.columns([2, 1, 1])
-                with c1:
-                    name_val = st.text_input(f"{label} name", value=curp.get("name", ""), key=f"poi_name_{key}")
-                with c2:
-                    lat_val = st.text_input(f"{label} lat", value=str(curp.get("lat", "")), key=f"poi_lat_{key}")
-                with c3:
-                    lon_val = st.text_input(f"{label} lon", value=str(curp.get("lon", "")), key=f"poi_lon_{key}")
-                new_pois[key] = {
-                    "name": (name_val or label).strip(),
-                    "lat":  lat_val.strip(),
-                    "lon":  lon_val.strip(),
-                }
-
+                with c1: name_val = st.text_input(f"{label} name", value=curp.get("name",""), key=f"poi_name_{key}")
+                with c2: lat_val  = st.text_input(f"{label} lat",  value=str(curp.get("lat","")), key=f"poi_lat_{key}")
+                with c3: lon_val  = st.text_input(f"{label} lon",  value=str(curp.get("lon","")), key=f"poi_lon_{key}")
+                new_pois[key] = {"name": (name_val or label).strip(), "lat": lat_val.strip(), "lon": lon_val.strip()}
             if st.form_submit_button("💾 Save POIs"):
-                data["gps"]["pois"] = new_pois
-                save_runtime_data(data)
-                st.success("Favorite places saved.")
+                data["gps"]["pois"] = new_pois; save_runtime_data(data); st.success("Favorite places saved.")
 
         st.caption("Quick test: open driving directions Home → selected place")
-        home_lat = data["gps"].get("lat") or ""
-        home_lon = data["gps"].get("lon") or ""
+        home_lat = data["gps"].get("lat") or ""; home_lon = data["gps"].get("lon") or ""
         cA, cB, cC, cD = st.columns(4)
         for (key, label), col in zip(poi_keys, [cA, cB, cC, cD]):
             with col:
                 if st.button(f"➡️ {label}", key=f"poi_go_{key}"):
                     poi = data["gps"]["pois"].get(key, {})
-                    p_lat = poi.get("lat") or ""
-                    p_lon = poi.get("lon") or ""
+                    p_lat = poi.get("lat") or ""; p_lon = poi.get("lon") or ""
                     try:
                         if (not p_lat or not p_lon) and home_lat and home_lon:
                             hlat = float(home_lat); hlon = float(home_lon)
@@ -1069,7 +858,6 @@ else:
         home_lat  = gps.get("lat") or ""
         home_lon  = gps.get("lon") or ""
         pois      = gps.get("pois", {})
-
         st.write(f"Home: **{home_addr or 'Not set'}**")
         st.caption("Tap a button to open Google Maps with directions.")
 
@@ -1098,15 +886,14 @@ else:
             with col:
                 if st.button(label, key=f"pt_go_{key}"):
                     poi = pois.get(key, {})
-                    p_lat = poi.get("lat") or ""
-                    p_lon = poi.get("lon") or ""
+                    p_lat = poi.get("lat") or ""; p_lon = poi.get("lon") or ""
                     try:
                         if (not p_lat or not p_lon) and home_lat and home_lon:
                             hlat = float(home_lat); hlon = float(home_lon)
                             off_lat, off_lon = _offset_point(hlat, hlon, km_north=3.5, km_east=3.5)
                             p_lat, p_lon = f"{off_lat:.6f}", f"{off_lon:.6f}"
                         url = _build_dir_url(
-                            origin_lat=home_lat if home_lat else None,   # Home → POI
+                            origin_lat=home_lat if home_lat else None,
                             origin_lon=home_lon if home_lon else None,
                             dest_lat=p_lat if p_lat else None,
                             dest_lon=p_lon if p_lon else None,
@@ -1116,67 +903,142 @@ else:
                     except Exception:
                         st.error("Please ask the caregiver to set this place in GPS / Home tab.")
 
-    # -------------------------
-    # 🤖 AI Chatbot  (fixed date & working mic)
-    # -------------------------
+    # ---------------------- AI CHATBOT ----------------------
     with tab_ai:
         st.subheader("🤖 AI Chatbot")
-        st.caption("Speak (mic) or type. Short, friendly answers.")
+        st.caption("Type or use the mic. Short, friendly answers. Date/Time uses IST.")
 
-        # show history
+        # Thread
         for msg in st.session_state.patient_ai_chat:
             with st.chat_message(msg["role"]):
                 st.markdown(msg["content"])
 
-        # >>> FIX: use components.html for Web Speech API and return via ?say=
+        # Previous Questions (👇 below chat, 👆 above Speak)
+        st.markdown("#### ⏪ Previous questions")
+        if st.session_state.prev_questions:
+            for i, q in enumerate(reversed(st.session_state.prev_questions)):
+                colq1, colq2 = st.columns([8, 1])
+                with colq1:
+                    st.markdown(f"- {q}")
+                with colq2:
+                    idx = len(st.session_state.prev_questions) - 1 - i
+                    if st.button("🗑️", key=f"del_prev_q_{idx}", help="Delete this question"):
+                        st.session_state.prev_questions.pop(idx)
+                        st.rerun()
+            if st.button("Clear all previous questions"):
+                st.session_state.prev_questions.clear()
+                st.rerun()
+        else:
+            st.info("No previous questions yet.")
+
+        # Speak button (robust; stops properly; resets status)
         components.html(
             """
-            <div style="margin:8px 0 12px 0;">
-              <button id="stt-btn" style="padding:6px 14px;border:none;background:#f97316;color:white;border-radius:8px;cursor:pointer;">🎤 Speak</button>
+            <div style="margin:8px 0 10px 0;">
+              <button id="stt-btn" style="padding:6px 14px;border:none;background:#f97316;color:white;border-radius:8px;cursor:pointer;">
+                🎤 Speak
+              </button>
               <span id="stt-status" style="margin-left:8px;font-size:12px;color:#fff;"></span>
             </div>
             <script>
             (function(){
-              const btn = document.getElementById("stt-btn");
-              const status = document.getElementById("stt-status");
+              const btn  = document.getElementById("stt-btn");
+              const stat = document.getElementById("stt-status");
               if (!btn) return;
+
+              function pushToApp(text){
+                try{
+                  const u = new URL(window.top.location.href);
+                  u.searchParams.set("say", text);
+                  stat.textContent = "Captured ✓";
+                  setTimeout(()=>{ window.top.location.href = u.toString(); }, 100);
+                  return true;
+                }catch(e){}
+                try{
+                  const u = new URL(window.parent.location.href);
+                  u.searchParams.set("say", text);
+                  stat.textContent = "Captured ✓";
+                  setTimeout(()=>{ window.parent.location.href = u.toString(); }, 100);
+                  return true;
+                }catch(e){}
+                try{
+                  const u = new URL(window.location.href);
+                  u.searchParams.set("say", text);
+                  stat.textContent = "Captured ✓";
+                  setTimeout(()=>{ window.location.href = u.toString(); }, 100);
+                  return true;
+                }catch(e){}
+                return false;
+              }
+
               btn.addEventListener("click", function(){
-                const isLocal = (location.hostname==="localhost"||location.hostname==="127.0.0.1");
-                if (!window.isSecureContext && !isLocal){ status.innerText="❌ Mic blocked: use https or localhost."; return; }
-                const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-                if (!SR){ status.innerText="❌ SpeechRecognition not supported."; return; }
-                const rec = new SR(); rec.lang = "en-US";
-                rec.onstart = () => { status.textContent = "Listening..."; };
-                rec.onerror = (e) => { status.textContent = "❌ " + e.error; };
-                rec.onresult = (e) => {
-                  const text = e.results[0][0].transcript;
-                  try {
-                    const u = new URL(window.parent.location.href);
-                    u.searchParams.set("say", text);
-                    window.parent.location.href = u.toString();
-                  } catch(e){
-                    status.textContent = "❌ Could not send speech to app.";
+                const isLocal=(location.hostname==="localhost"||location.hostname==="127.0.0.1");
+                if (!window.isSecureContext && !isLocal){ stat.innerText="❌ Mic blocked: use https or localhost."; return; }
+                const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+                if (!SR){ stat.innerText="❌ SpeechRecognition not supported."; return; }
+
+                const rec=new SR();
+                rec.lang="en-US";
+                rec.continuous=false;
+                rec.interimResults=false;
+
+                let done=false;
+                rec.onstart=()=>{ stat.textContent="Listening..."; };
+                rec.onerror=(e)=>{ stat.textContent="❌ "+e.error; rec.stop(); };
+                rec.onend = ()=>{ if(!done && stat.textContent==="Listening..."){ stat.textContent=""; } };
+
+                rec.onresult=(e)=>{
+                  try{
+                    done=true;
+                    const text=e.results[0][0].transcript;
+                    stat.textContent="Processing…";
+                    rec.stop();
+                    if(!pushToApp(text)){
+                      stat.textContent="❌ Could not send speech to app.";
+                    }
+                  }catch(err){
+                    stat.textContent="❌ Failed to read speech.";
                   }
                 };
+
+                // safety stop after 12s if nothing happened
+                setTimeout(()=>{ try{ if(stat.textContent==="Listening..."){ rec.stop(); stat.textContent=""; } }catch(_){} }, 12000);
                 rec.start();
               });
             })();
             </script>
             """,
-            height=80,
+            height=90,
         )
 
+        # Pull recognized speech into draft
         spoken = get_qp("say")
-        typed = st.chat_input("Type your message")
-        user_input = spoken if spoken else typed
+        if spoken:
+            st.session_state.chat_draft = spoken
+            _clear_say_query_param()
+
+        # Draft + Send
+        col_inp, col_btn = st.columns([0.8, 0.2])
+        with col_inp:
+            st.session_state.chat_draft = st.text_input(
+                "Your message",
+                key="chat_draft",
+                value=st.session_state.chat_draft,
+                placeholder="Type here... (Speak fills this box)"
+            )
+        with col_btn:
+            send_now = st.button("Send", type="primary")
+
+        user_input = st.session_state.chat_draft if send_now and st.session_state.chat_draft.strip() else None
 
         last_reply = None
         if user_input:
             st.session_state.patient_ai_chat.append({"role": "user", "content": user_input})
+            st.session_state.prev_questions.append(user_input)
+
             with st.chat_message("user"):
                 st.markdown(user_input)
 
-            # >>> FIX: local answer for date/time questions
             if _looks_like_datetime_question(user_input):
                 reply_text = f"Today is {_today_ist_str()}."
             else:
@@ -1209,26 +1071,33 @@ else:
 
             st.session_state.patient_ai_chat.append({"role": "assistant", "content": reply_text})
             last_reply = reply_text
+            st.session_state.chat_draft = ""
         else:
             for m in reversed(st.session_state.patient_ai_chat):
                 if m["role"] == "assistant":
                     last_reply = m["content"]; break
 
+        # Read aloud only the last answer
         if last_reply:
             safe_last = json.dumps(last_reply)
-            st.markdown(
+            components.html(
                 f"""
-                <button id="tts-btn" style="margin-top:10px;padding:6px 14px;border:none;background:#0ea5e9;color:white;border-radius:8px;cursor:pointer;">🔊 Read aloud</button>
+                <button id="tts-btn" style="margin-top:10px;padding:6px 14px;border:none;background:#0ea5e9;color:white;border-radius:8px;cursor:pointer;">
+                  🔊 Read aloud last answer
+                </button>
                 <script>
                 (function(){{
                   const btn=document.getElementById("tts-btn");
                   if(!btn) return;
                   btn.addEventListener("click", function(){{
                     if(!window.speechSynthesis){{ alert("Speech not supported here."); return; }}
-                    const u=new SpeechSynthesisUtterance({safe_last}); u.lang="en-US"; u.rate=0.95; window.speechSynthesis.speak(u);
+                    const u=new SpeechSynthesisUtterance({safe_last});
+                    u.lang="en-US"; u.rate=0.95; u.pitch=1.0; u.volume=1.0;
+                    try{{ window.speechSynthesis.cancel(); }}catch(_){}
+                    window.speechSynthesis.speak(u);
                   }});
                 }})();
                 </script>
                 """,
-                unsafe_allow_html=True,
+                height=60,
             )
