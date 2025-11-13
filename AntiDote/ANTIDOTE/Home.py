@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Dict, Any, List, Optional
 
 import streamlit as st
-from PIL import Image
+from PIL import Image  # noqa: F401
 import requests
 import streamlit.components.v1 as components
 
@@ -120,26 +120,29 @@ def _looks_like_datetime_question(text: str) -> bool:
     return bool(_DATE_TIME_PAT.search(text or ""))
 
 def _clear_say_query_param():
-    # Remove ?say= from URL after we captured it
     try:
         qp = dict(st.query_params)
         if "say" in qp:
             qp.pop("say")
             st.experimental_set_query_params(**qp)
     except Exception:
-        try:
-            st.experimental_set_query_params()
-        except Exception:
-            pass
+        pass
 
 # ------------------------------------------------------------
-# PATH & MEDIA HELPERS
+# PATH RESOLUTION HELPERS (baseline-relative media)
 # ------------------------------------------------------------
 def resolve_path(p: str) -> str:
+    """Return absolute path for media:
+    - absolute path => unchanged if exists
+    - relative (e.g., 'uploads/images/...') => try REPO_ROOT, APP_DIR, PROJECT_DIR
+    - otherwise return original
+    """
     if not p:
         return ""
+    # absolute and exists
     if os.path.isabs(p) and os.path.exists(p):
         return p
+    # try common bases
     for base in (REPO_ROOT, APP_DIR, PROJECT_DIR):
         candidate = (base / p).resolve()
         if os.path.exists(candidate):
@@ -188,11 +191,13 @@ def _find_baseline_file() -> Optional[Path]:
     return None
 
 def _merge_maps(baseline: Dict[str, Any], runtime: Dict[str, Any], key: str) -> Dict[str, Any]:
+    """Merge dicts of objects by ID. Runtime overrides baseline."""
     out = dict(baseline.get(key, {}))
     out.update(runtime.get(key, {}))
     return out
 
 def _merge_lists_latest_first(b_list: List[str], r_list: List[str]) -> List[str]:
+    """Concatenate runtime first (latest), then baseline; remove duplicates preserving order."""
     seen = set()
     out: List[str] = []
     for s in (r_list or []) + (b_list or []):
@@ -207,22 +212,26 @@ def load_merged_data() -> Dict[str, Any]:
     runtime = _read_json(RUNTIME_FILE)
 
     data = default_data()
+    # shallow keys
     data["profile"] = baseline.get("profile") or data["profile"]
-
-    # merge gps shallow & pois
+    # merge gps shallow items; keep pois separately if present
     if "gps" in baseline:
         data["gps"].update({k: v for k, v in baseline["gps"].items() if k != "pois"})
         if isinstance(baseline["gps"].get("pois"), dict):
             data["gps"]["pois"].update(baseline["gps"]["pois"])
-
     data["logs"] = baseline.get("logs") or data["logs"]
+
+    # merged maps
     data["reminders"] = _merge_maps(baseline, runtime, "reminders")
     data["people"] = _merge_maps(baseline, runtime, "people")
+
+    # merged memory book index (paths)
     data["memory_book_images"] = _merge_lists_latest_first(
         baseline.get("memory_book_images", []),
         runtime.get("memory_book_images", []),
     )
 
+    # runtime gps overrides
     if "gps" in runtime:
         data["gps"].update({k: v for k, v in runtime["gps"].items() if k != "pois"})
         if isinstance(runtime["gps"].get("pois"), dict):
@@ -231,6 +240,7 @@ def load_merged_data() -> Dict[str, Any]:
     return data
 
 def save_runtime_data(data: Dict[str, Any]) -> None:
+    # only persist dynamic keys (don't overwrite baseline)
     dyn = {
         "profile": data.get("profile", {}),
         "gps": data.get("gps", {}),
@@ -250,7 +260,8 @@ def save_runtime_data(data: Dict[str, Any]) -> None:
 # ------------------------------------------------------------
 def _slugify(s: str) -> str:
     s = (s or "").strip().lower()
-    s = re.sub(r"[^a-z0-9]+", "-", s)
+    import re as _re
+    s = _re.sub(r"[^a-z0-9]+", "-", s)
     return s.strip("-") or "photo"
 
 def save_upload_to(upload, folder: Path, name_hint: Optional[str] = None) -> str:
@@ -360,25 +371,33 @@ def _file_mtime_or_zero(path: Path) -> float:
         return 0.0
 
 def get_memory_book_images() -> List[Path]:
+    """
+    Combine baseline memory_book_images plus runtime folder images.
+    Return list of Paths (existing), newest first.
+    """
     imgs: List[Path] = []
 
+    # Baseline-declared images (repo paths are relative to REPO_ROOT)
     baseline_paths = st.session_state.data.get("memory_book_images", [])
     for rel in baseline_paths:
         p = Path(resolve_path(rel)).resolve()
         if p.exists():
             imgs.append(p)
 
+    # Runtime uploaded images
     if MBOOK_IMG_DIR.exists():
         for f in MBOOK_IMG_DIR.iterdir():
             if f.suffix.lower() in (".jpg", ".jpeg", ".png", ".gif", ".webp"):
                 imgs.append(f.resolve())
 
+    # Deduplicate by absolute path, keep newest first
     uniq = {}
     for p in sorted(imgs, key=_file_mtime_or_zero, reverse=True):
         uniq[str(p)] = p
     return list(uniq.values())
 
 def ensure_people_from_memory_book(data: Dict[str, Any]) -> int:
+    """Ensure every Memory Book image has a Person entry. Do not force due dates."""
     imgs = get_memory_book_images()
     if not imgs:
         return 0
@@ -396,6 +415,7 @@ def ensure_people_from_memory_book(data: Dict[str, Any]) -> int:
             continue
 
         stem = Path(img_path).stem
+        # derive a friendly name prefix (before first dash)
         base = stem.split("-", 1)[0]
         nice = base.replace("-", " ").replace("_", " ").title() or "Family"
 
@@ -415,7 +435,6 @@ def ensure_people_from_memory_book(data: Dict[str, Any]) -> int:
     return added
 
 def get_qp(name: str) -> Optional[str]:
-    # First try modern API
     try:
         qp = st.query_params
         v = qp.get(name)
@@ -433,11 +452,16 @@ def read_audio_bytes(path: str) -> Optional[bytes]:
     except Exception:
         return None
 
+
 # --- GPS helpers (build Google Maps directions & open in new tab) ---
 def _open_external(url: str) -> None:
+    """Open a URL in a new browser tab from Streamlit."""
     components.html(f"<script>window.open('{url}', '_blank');</script>", height=0)
 
 def _build_dir_url(origin_lat=None, origin_lon=None, dest_lat=None, dest_lon=None, mode: str = "driving") -> str:
+    """
+    Build Google Maps directions URL. If origin is None, Google Maps uses device GPS.
+    """
     base = "https://www.google.com/maps/dir/?api=1"
     params = []
     if origin_lat and origin_lon:
@@ -448,10 +472,15 @@ def _build_dir_url(origin_lat=None, origin_lon=None, dest_lat=None, dest_lon=Non
     return base + "&" + "&".join(params)
 
 def _offset_point(lat: float, lon: float, km_north: float = 0.0, km_east: float = 0.0) -> tuple[float, float]:
+    """
+    Roughly offset a lat/lon by km. 1 deg lat ~111km, 1 deg lon ~111km*cos(lat).
+    Good enough to synthesize a ~5km sample point.
+    """
     import math
     dlat = km_north / 111.0
     dlon = km_east / (111.0 * max(0.1, abs(math.cos(math.radians(lat)))))
     return lat + dlat, lon + dlon
+
 
 # ------------------------------------------------------------
 # PAGE CONFIG + CSS
@@ -477,10 +506,13 @@ st.markdown(
       background: linear-gradient(180deg, rgba(255,255,255,.05), rgba(255,255,255,.025));
       border:1px solid var(--border); border-radius:14px; padding:12px 14px; box-shadow: 0 12px 28px rgba(0,0,0,.25); margin-bottom:10px;
     }
+    .alzy-row { display:flex; gap:10px; align-items:flex-start; }
     .alzy-thumb { width: 170px; height: 130px; border-radius:12px; overflow:hidden; border:1px solid var(--border); flex: 0 0 auto; }
     .alzy-thumb img { width:100%; height:100%; object-fit:cover; display:block; }
+
     @media (max-width: 640px) { .alzy-thumb { width: 150px; height: 116px; } }
     @media (min-width: 1400px) { .alzy-thumb { width: 190px; height: 144px; } }
+
     .alzy-meta { flex: 1 1 auto; min-width: 0; }
     .alzy-actions { display:flex; gap:8px; flex-wrap:wrap; margin-top:8px; }
     .chip { display:inline-block; padding:2px 8px; font-size:.75rem; border-radius:999px; border:1px solid var(--border); color:var(--muted); }
@@ -533,7 +565,7 @@ data["gps"].setdefault("pois", {
     "hospital":      {"name": "Hospital",      "lat": "", "lon": ""},
     "mothers_home":  {"name": "Mother's Home", "lat": "", "lon": ""}
 })
-save_runtime_data(data)
+save_runtime_data(data)  # persist if it was missing
 
 if "role" not in st.session_state:
     st.session_state.role = None
@@ -558,6 +590,7 @@ if qp_role in ("patient", "caretaker"):
 # SHARED RENDER HELPERS
 # ------------------------------------------------------------
 def _render_thumb(path: str) -> None:
+    """Render a small thumbnail with a fixed target height (cropped/resized via PIL)."""
     rp = resolve_path(path)
     if image_exists(path):
         try:
@@ -632,7 +665,7 @@ def _render_reminder_card(
                         data["reminders"].pop(rec["id"], None)
                         save_runtime_data(data)
                         st.rerun()
-    st.markdown("<hr class='thick' />", unsafe_allow_html=True)
+        st.markdown("<hr class='thick' />", unsafe_allow_html=True)
 
 def _render_due_and_coming(
     is_caregiver: bool,
@@ -667,7 +700,7 @@ def _render_due_and_coming(
             for i, r in enumerate(upcoming, 1):
                 _render_reminder_card(r, i, is_caregiver, key_prefix=f"{scope}_soon_{t}", show_actions=False)
 
-# --- QUIZ (simple & calm) ---
+# --- QUIZ (simple & calm for ALZY) ---
 def _render_quiz_simple():
     st.subheader("🧩 Face quiz")
 
@@ -892,7 +925,7 @@ if st.session_state.role == "caretaker":
             for lg in logs:
                 st.write(f"{human_time(lg['time'])} — {lg['title']} — {lg['action']} — ({lg['type']})")
 
-    # GPS / Home (Caregiver)
+    # GPS / Home
     with tab_gps:
         st.subheader("📍 GPS / Home (IST time shown across app)")
 
@@ -971,9 +1004,12 @@ if st.session_state.role == "caretaker":
 
         with st.form("save_pois_form", clear_on_submit=False):
             cols_hdr = st.columns([2, 1, 1])
-            with cols_hdr[0]: st.markdown("**Place name**")
-            with cols_hdr[1]: st.markdown("**Latitude**")
-            with cols_hdr[2]: st.markdown("**Longitude**")
+            with cols_hdr[0]:
+                st.markdown("**Place name**")
+            with cols_hdr[1]:
+                st.markdown("**Latitude**")
+            with cols_hdr[2]:
+                st.markdown("**Longitude**")
 
             new_pois = {}
             for key, label in poi_keys:
@@ -1003,12 +1039,13 @@ if st.session_state.role == "caretaker":
         for (key, label), col in zip(poi_keys, [cA, cB, cC, cD]):
             with col:
                 if st.button(f"➡️ {label}", key=f"poi_go_{key}"):
-                    poi = data["gps"].get("pois", {}).get(key, {})
+                    poi = data["gps"]["pois"].get(key, {})
                     p_lat = poi.get("lat") or ""
                     p_lon = poi.get("lon") or ""
                     try:
                         if (not p_lat or not p_lon) and home_lat and home_lon:
-                            hlat = float(home_lat); hlon = float(home_lon)
+                            hlat = float(home_lat)
+                            hlon = float(home_lon)
                             off_lat, off_lon = _offset_point(hlat, hlon, km_north=3.5, km_east=3.5)
                             p_lat, p_lon = f"{off_lat:.6f}", f"{off_lon:.6f}"
                         url = _build_dir_url(
@@ -1079,12 +1116,11 @@ else:
         st.write(f"Home: **{home_addr or 'Not set'}**")
         st.caption("Tap a button to open Google Maps with directions.")
 
-        # Back to Home (device GPS → Home)
         c1, c2, c3, c4 = st.columns(4)
         with c1:
             if st.button("🏠 Back to Home"):
                 url = _build_dir_url(
-                    origin_lat=None, origin_lon=None,  # leave origin empty so Google uses device GPS automatically
+                    origin_lat=None, origin_lon=None,  # device GPS used by Maps
                     dest_lat=home_lat if home_lat else None,
                     dest_lon=home_lon if home_lon else None,
                     mode="driving",
@@ -1094,7 +1130,6 @@ else:
                 else:
                     st.error("Home is not set. Ask the caregiver to save Home in GPS / Home tab.")
 
-        # Home → POIs
         row = st.columns(4)
         for (key, label), col in zip(
             [("family_doctor","Family Doctor"),
@@ -1114,7 +1149,7 @@ else:
                             off_lat, off_lon = _offset_point(hlat, hlon, km_north=3.5, km_east=3.5)
                             p_lat, p_lon = f"{off_lat:.6f}", f"{off_lon:.6f}"
                         url = _build_dir_url(
-                            origin_lat=home_lat if home_lat else None,   # home as origin (if set)
+                            origin_lat=home_lat if home_lat else None,   # Home → POI
                             origin_lon=home_lon if home_lon else None,
                             dest_lat=p_lat if p_lat else None,
                             dest_lon=p_lon if p_lon else None,
@@ -1129,7 +1164,7 @@ else:
         st.subheader("🤖 AI Chatbot")
         st.caption("Type or use the mic. We’ll keep answers short and friendly.")
 
-        # Show chat history (top)
+        # Show chat history
         for msg in st.session_state.patient_ai_chat:
             with st.chat_message(msg["role"]):
                 st.markdown(msg["content"])
@@ -1167,33 +1202,39 @@ else:
               const stat = document.getElementById("stt-status");
               if (!btn) return;
 
-              function pushToQueryOn(ctx){
+              function pushToTopQuery(text){
                 try{
-                  const u = new URL(ctx.location.href);
-                  return function(text){
-                    try { u.searchParams.set("say", text); ctx.location.href = u.toString(); return true; } catch(e){ return false; }
-                  }
-                }catch(e){ return function(){ return false; } }
-              }
-              const tryTop    = pushToQueryOn(window.top);
-              const tryParent = pushToQueryOn(window.parent);
-              const trySelf   = pushToQueryOn(window);
-
-              function pushAny(text){
-                return tryTop(text) || tryParent(text) || trySelf(text);
+                  const u = new URL(window.top.location.href);
+                  u.searchParams.set("say", text);
+                  window.top.location.href = u.toString();
+                  return true;
+                }catch(e){}
+                try{
+                  const u = new URL(window.parent.location.href);
+                  u.searchParams.set("say", text);
+                  window.parent.location.href = u.toString();
+                  return true;
+                }catch(e){}
+                try{
+                  const u = new URL(window.location.href);
+                  u.searchParams.set("say", text);
+                  window.location.href = u.toString();
+                  return true;
+                }catch(e){}
+                return false;
               }
 
               btn.addEventListener("click", function(){
                 const isLocal=(location.hostname==="localhost"||location.hostname==="127.0.0.1");
-                if (!window.isSecureContext && !isLocal){ stat.textContent="❌ Mic blocked: use https or localhost."; return; }
+                if (!window.isSecureContext && !isLocal){ stat.innerText="❌ Mic blocked: use https or localhost."; return; }
                 const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
-                if (!SR){ stat.textContent="❌ SpeechRecognition not supported."; return; }
+                if (!SR){ stat.innerText="❌ SpeechRecognition not supported."; return; }
                 const rec=new SR(); rec.lang="en-US";
                 rec.onstart=()=>{ stat.textContent="Listening..."; };
                 rec.onerror=(e)=>{ stat.textContent="❌ "+e.error; };
                 rec.onresult=(e)=>{
                   const text=e.results[0][0].transcript;
-                  if(!pushAny(text)){
+                  if(!pushToTopQuery(text)){
                     stat.textContent="❌ Could not send speech to app.";
                   }
                 };
@@ -1211,7 +1252,7 @@ else:
             st.session_state.chat_draft = spoken
             _clear_say_query_param()
 
-        # Draft + Send button
+        # Draft + Send
         col_inp, col_btn = st.columns([0.8, 0.2])
         with col_inp:
             st.session_state.chat_draft = st.text_input(
@@ -1233,7 +1274,7 @@ else:
             with st.chat_message("user"):
                 st.markdown(user_input)
 
-            # Local IST handling for date/time questions
+            # Handle local date/time instantly
             if _looks_like_datetime_question(user_input):
                 reply_text = f"Today is {_today_ist_str()}."
             else:
@@ -1274,7 +1315,7 @@ else:
                 if m["role"] == "assistant":
                     last_reply = m["content"]; break
 
-        # Read aloud ONLY the last answer
+        # Read aloud last answer
         if last_reply:
             safe_last = json.dumps(last_reply)
             components.html(
