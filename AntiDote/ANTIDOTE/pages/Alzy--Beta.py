@@ -1245,193 +1245,177 @@ else:
 
     # AI Chatbot
     # AI Chatbot
+    # AI Chatbot
     with tab_ai:
         st.subheader("🤖 AI Chatbot")
         st.caption("Speak (mic) or type. Short, friendly answers.")
 
-        # --- Conversation thread ---
+        # --- Show history (assistant + user) ---
         for msg in st.session_state.patient_ai_chat:
             with st.chat_message(msg["role"]):
                 st.markdown(msg["content"])
 
-        # --- Previous questions list + Clear button ---
-        st.markdown("**Previous questions**")
-        c_q1, c_q2 = st.columns([3, 1])
-        with c_q1:
-            if st.session_state.patient_ai_questions:
-                for i, q in enumerate(reversed(st.session_state.patient_ai_questions), 1):
-                    st.write(f"{i}. {q}")
-            else:
-                st.caption("No previous questions yet.")
-        with c_q2:
-            if st.button("🗑️ Clear previous", key="clear_prev_q"):
-                # reset questions + chat (keep friendly greeting)
-                st.session_state.patient_ai_questions = []
+        # --- Controls row: Speak + Clear previous ---
+        col_speak, col_clear = st.columns([2, 1])
+
+        with col_speak:
+            # Speak button + status (uses browser SpeechRecognition)
+            components.html(
+                """
+                <div style="margin:8px 0 12px 0;">
+                  <button id="stt-btn" style="padding:6px 14px;border:none;background:#f97316;color:white;border-radius:8px;cursor:pointer;">
+                    🎤 Speak
+                  </button>
+                  <span id="stt-status" style="margin-left:8px;font-size:12px;color:#fff;"></span>
+                </div>
+                <script>
+                (function(){
+                  const btn    = document.getElementById("stt-btn");
+                  const status = document.getElementById("stt-status");
+                  if (!btn) return;
+
+                  btn.addEventListener("click", function(){
+                    status.textContent = "";
+                    const isLocal = (location.hostname === "localhost" || location.hostname === "127.0.0.1");
+                    if (!window.isSecureContext && !isLocal){
+                      status.textContent = "❌ Mic blocked: use https or localhost.";
+                      return;
+                    }
+                    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+                    if (!SR){
+                      status.textContent = "❌ SpeechRecognition not supported.";
+                      return;
+                    }
+                    const rec = new SR();
+                    rec.lang = "en-US";
+
+                    rec.onstart = function(){
+                      status.textContent = "Listening...";
+                    };
+                    rec.onerror = function(e){
+                      status.textContent = "❌ " + (e.error || "Error");
+                    };
+                    rec.onend = function(){
+                      if (status.textContent === "Listening...") {
+                        status.textContent = "";
+                      }
+                    };
+                    rec.onresult = function(e){
+                      const text = e.results[0][0].transcript;
+                      status.textContent = "Heard: " + text;
+                      try {
+                        // Try to use the parent window URL (like your GPS button)
+                        var parentWin = window.parent || window;
+                        var href = parentWin.location.href || "";
+                        // Simple string-based query param append/replace for ?say=
+                        var sep = href.indexOf("?") === -1 ? "?" : "&";
+                        // Remove any existing ?say= first to avoid duplicates
+                        var newHref = href.replace(/([?&])say=[^&]*/g, "$1").replace(/[?&]$/, "");
+                        newHref += sep + "say=" + encodeURIComponent(text);
+                        parentWin.location.href = newHref;
+                      } catch (err) {
+                        console.error(err);
+                        status.textContent = "❌ Could not send speech to app: " + (err && err.message ? err.message : err);
+                      }
+                    };
+                    rec.start();
+                  });
+                })();
+                </script>
+                """,
+                height=110,
+            )
+
+        with col_clear:
+            if st.button("🧹 Clear previous"):
+                # Reset chat history to just the initial assistant greeting
                 st.session_state.patient_ai_chat = [
                     {
                         "role": "assistant",
                         "content": "Hello 👋 I'm your Memory Assistant. How can I help you today?"
                     }
                 ]
-                st.success("Cleared all previous questions and chat history.")
+                # Optional: also clear the last 'say' we've processed
+                st.session_state["last_say_used"] = None
                 st.rerun()
 
-        # --- Speak button (Speech-to-text using browser mic) ---
-        components.html(
-            """
-            <div style="margin:8px 0 12px 0;">
-              <button id="stt-btn" style="padding:6px 14px;border:none;background:#f97316;color:white;border-radius:8px;cursor:pointer;">
-                🎤 Speak
-              </button>
-              <span id="stt-status" style="margin-left:8px;font-size:12px;color:#fff;"></span>
-            </div>
-            <script>
-            (function(){
-              const btn    = document.getElementById("stt-btn");
-              const status = document.getElementById("stt-status");
-              if (!btn) return;
-
-              btn.addEventListener("click", function(){
-                status.textContent = "";
-                const isLocal = (location.hostname === "localhost" || location.hostname === "127.0.0.1");
-                if (!window.isSecureContext && !isLocal){
-                  status.textContent = "❌ Mic blocked: use https or localhost.";
-                  return;
-                }
-                const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-                if (!SR){
-                  status.textContent = "❌ SpeechRecognition not supported.";
-                  return;
-                }
-                const rec = new SR();
-                rec.lang = "en-US";
-
-                rec.onstart = function(){
-                  status.textContent = "Listening...";
-                };
-                rec.onerror = function(e){
-                  status.textContent = "❌ " + (e.error || "Error");
-                };
-                rec.onend = function(){
-                  if (status.textContent === "Listening...") {
-                    status.textContent = "";
-                  }
-                };
-                rec.onresult = function(e){
-                  const text = e.results[0][0].transcript;
-                  status.textContent = "Heard: " + text;
-                  try {
-                    // In Streamlit components, document.referrer is the *real* app URL
-                    const href = document.referrer || window.location.href;
-                    const u = new URL(href);
-                    u.searchParams.set('say', text);
-                    // Navigate the top window so the main app sees ?say=
-                    window.top.location.href = u.toString();
-                  } catch (err) {
-                    console.error(err);
-                    status.textContent = "❌ Could not send speech to app.";
-                  }
-                };
-                rec.start();
-              });
-            })();
-            </script>
-            """,
-            height=110,
-        )
-
-        # --- Chat input (typed or spoken) ---
+        # --- Input handling (speech via ?say=, or typed via chat_input) ---
         spoken = get_qp("say")
+
+        # Prevent the same ?say= from being processed repeatedly on reruns
+        last_say_used = st.session_state.get("last_say_used")
+        if spoken and spoken == last_say_used:
+            spoken = None
+
         typed = st.chat_input("Type your message")
-        user_input = spoken if spoken else typed
+        user_input = typed or spoken  # typed overrides spoken if both somehow present
 
         last_reply = None
 
         if user_input:
-            # store question in history
-            st.session_state.patient_ai_questions.append(user_input)
+            # Remember last used spoken phrase so it isn't reused on every rerun
+            st.session_state["last_say_used"] = user_input
 
-            # Clear ?say= from URL after we used it (so it's not reused on refresh)
-            if spoken:
-                components.html(
-                    """
-                    <script>
-                    (function(){
-                      try {
-                        const frameWin = window.parent || window;
-                        const u = new URL(frameWin.location.href);
-                        u.searchParams.delete('say');
-                        frameWin.history.replaceState({}, '', u.toString());
-                      } catch (e) {}
-                    })();
-                    </script>
-                    """,
-                    height=0,
-                )
-
-            # add user message to chat
+            # Log user message
             st.session_state.patient_ai_chat.append({"role": "user", "content": user_input})
             with st.chat_message("user"):
                 st.markdown(user_input)
 
-            # First: local IST date/time override
-            reply_text = maybe_local_answer(user_input)
+            # Default fallback reply
+            reply_text = f"I heard: {user_input}. I couldn't reach AI right now."
             api_key = OPENAI_API_KEY
 
-            if reply_text is None:
-                reply_text = f"I heard: {user_input}. I couldn't reach AI right now."
+            # Let the model know today's date explicitly
+            today_str = now_local().strftime("%B %d, %Y")
+            system_msg = (
+                "You are a gentle assistant for an Alzheimer's patient. "
+                "Reply in 2–3 short, simple sentences. Be friendly and calm. "
+                f"Today's date in India is {today_str}. "
+                "If the user asks for today's date or day, use this date."
+            )
 
-                if api_key:
-                    try:
-                        url = "https://api.openai.com/v1/chat/completions"
-                        headers = {
-                            "Authorization": f"Bearer {api_key}",
-                            "Content-Type": "application/json",
-                        }
-                        msgs = [
-                            {
-                                "role": "system",
-                                "content": (
-                                    "You are a gentle assistant for an Alzheimer's patient. "
-                                    "Reply in 2–3 short, simple sentences. Be friendly. "
-                                    "If the user asks for date or time, assume Indian time zone (IST)."
-                                ),
-                            }
-                        ] + st.session_state.patient_ai_chat[-6:]
-                        payload = {
-                            "model": "gpt-4o-mini",
-                            "messages": msgs,
-                            "max_tokens": 150,
-                            "temperature": 0.6,
-                        }
-                        resp = requests.post(url, headers=headers, json=payload, timeout=15)
-                        if resp.status_code == 200:
-                            j = resp.json()
-                            reply_text = j.get("choices", [{}])[0].get("message", {}).get("content", "I’m here with you.")
-                        else:
-                            reply_text = f"⚠️ API error {resp.status_code}: {resp.text[:160]}"
-                    except Exception as e:
-                        reply_text = f"⚠️ Request failed: {e}"
-                else:
-                    reply_text = "❗ No OPENAI_API_KEY found.\nAdd it to your .env or Streamlit Secrets."
+            if api_key:
+                try:
+                    url = "https://api.openai.com/v1/chat/completions"
+                    headers = {
+                        "Authorization": f"Bearer {api_key}",
+                        "Content-Type": "application/json",
+                    }
+                    msgs = [{"role": "system", "content": system_msg}] + st.session_state.patient_ai_chat[-6:]
+                    payload = {
+                        "model": "gpt-4o-mini",
+                        "messages": msgs,
+                        "max_tokens": 150,
+                        "temperature": 0.6,
+                    }
+                    resp = requests.post(url, headers=headers, json=payload, timeout=15)
+                    if resp.status_code == 200:
+                        j = resp.json()
+                        reply_text = j.get("choices", [{}])[0].get("message", {}).get("content", "I’m here with you.")
+                    else:
+                        reply_text = f"⚠️ API error {resp.status_code}: {resp.text[:160]}"
+                except Exception as e:
+                    reply_text = f"⚠️ Request failed: {e}"
+            else:
+                reply_text = "❗ No OPENAI_API_KEY found.\nAdd it to your .env or Streamlit Secrets."
 
-            # show assistant reply
+            # Assistant reply
             with st.chat_message("assistant"):
                 st.markdown(reply_text)
 
             st.session_state.patient_ai_chat.append({"role": "assistant", "content": reply_text})
             last_reply = reply_text
         else:
-            # no new input; take last assistant reply for TTS
+            # No new input: use last assistant message for "Read aloud"
             for m in reversed(st.session_state.patient_ai_chat):
                 if m["role"] == "assistant":
                     last_reply = m["content"]
                     break
 
-        # --- Read aloud last answer (TTS) ---
+        # --- Read aloud last answer ---
         if last_reply:
-            safe_last_js = json.dumps(last_reply)
-            components.html(
+            safe_last = json.dumps(last_reply)
+            st.markdown(
                 f"""
                 <button id="tts-btn" style="margin-top:10px;padding:6px 14px;border:none;background:#0ea5e9;color:white;border-radius:8px;cursor:pointer;">
                   🔊 Read aloud last answer
@@ -1439,24 +1423,19 @@ else:
                 <script>
                 (function(){{
                   const btn = document.getElementById("tts-btn");
-                  if(!btn) return;
-                  const text = {safe_last_js};
+                  if (!btn) return;
                   btn.addEventListener("click", function(){{
-                    if(!window.speechSynthesis){{
+                    if (!window.speechSynthesis) {{
                       alert("Speech not supported here.");
                       return;
                     }}
-                    try {{ window.speechSynthesis.cancel(); }} catch(e) {{}}
-                    const u = new SpeechSynthesisUtterance(text);
+                    const u = new SpeechSynthesisUtterance({safe_last});
                     u.lang = "en-US";
                     u.rate = 0.95;
-                    u.pitch = 1.0;
-                    u.volume = 1.0;
                     window.speechSynthesis.speak(u);
                   }});
                 }})();
                 </script>
                 """,
-                height=80,
+                unsafe_allow_html=True,
             )
-
