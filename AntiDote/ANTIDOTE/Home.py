@@ -87,9 +87,6 @@ team = [
     {"name": "Aarav", "class": "8-C", "img": "https://raw.githubusercontent.com/prompt-base/AntiDote/main/AntiDote/ANTIDOTE/images/aarav.jpg"},
     {"name": "Tejash", "class": "8-A", "img": "https://raw.githubusercontent.com/prompt-base/AntiDote/main/AntiDote/ANTIDOTE/images/tejash.jpg"},
     {"name": "Priyanshu", "class": "8-A", "img": "https://raw.githubusercontent.com/prompt-base/AntiDote/main/AntiDote/ANTIDOTE/images/priyanshu.jpg"},
-    {"name": "Aarav Kumar Shaw", "class": "8-C", "img": "https://raw.githubusercontent.com/prompt-base/AntiDote/main/AntiDote/ANTIDOTE/images/aarav.jpg"},
-    {"name": "Tejas Singh", "class": "8-A", "img": "https://raw.githubusercontent.com/prompt-base/AntiDote/main/AntiDote/ANTIDOTE/images/tejash.jpg"},
-    {"name": "Priyanshu Das", "class": "8-A", "img": "https://raw.githubusercontent.com/prompt-base/AntiDote/main/AntiDote/ANTIDOTE/images/priyanshu.jpg"},
 ]
 
 cols = st.columns(4)
@@ -123,3 +120,4 @@ st.markdown("""
     </p>
 </div>
 """, unsafe_allow_html=True)
+
