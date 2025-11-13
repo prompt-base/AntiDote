@@ -1276,8 +1276,8 @@ else:
                 st.success("Cleared all previous questions and chat history.")
                 st.rerun()
 
-        # --- Speech-to-text "Speak" button ---
-        st.markdown(
+        # --- Speak button (Speech-to-text using browser mic) ---
+        components.html(
             """
             <div style="margin:8px 0 12px 0;">
               <button id="stt-btn" style="padding:6px 14px;border:none;background:#f97316;color:white;border-radius:8px;cursor:pointer;">
@@ -1336,7 +1336,7 @@ else:
             })();
             </script>
             """,
-            unsafe_allow_html=True,
+            height=110,
         )
 
         # --- Chat input (typed or spoken) ---
@@ -1373,7 +1373,7 @@ else:
             with st.chat_message("user"):
                 st.markdown(user_input)
 
-            # Local date/time override first
+            # First: local IST date/time override
             reply_text = maybe_local_answer(user_input)
             api_key = OPENAI_API_KEY
 
@@ -1431,31 +1431,30 @@ else:
         if last_reply:
             safe_last_js = json.dumps(last_reply)
             components.html(
-                """
+                f"""
                 <button id="tts-btn" style="margin-top:10px;padding:6px 14px;border:none;background:#0ea5e9;color:white;border-radius:8px;cursor:pointer;">
                   🔊 Read aloud last answer
                 </button>
                 <script>
-                (function(){
+                (function(){{
                   const btn = document.getElementById("tts-btn");
                   if(!btn) return;
-                  const text = %s;
-                  btn.addEventListener("click", function(){
-                    if(!window.speechSynthesis){
+                  const text = {safe_last_js};
+                  btn.addEventListener("click", function(){{
+                    if(!window.speechSynthesis){{
                       alert("Speech not supported here.");
                       return;
-                    }
-                    try { window.speechSynthesis.cancel(); } catch(e) {}
+                    }}
+                    try {{ window.speechSynthesis.cancel(); }} catch(e) {{}}
                     const u = new SpeechSynthesisUtterance(text);
                     u.lang = "en-US";
                     u.rate = 0.95;
                     u.pitch = 1.0;
                     u.volume = 1.0;
                     window.speechSynthesis.speak(u);
-                  });
-                })();
+                  }});
+                }})();
                 </script>
-                """ % safe_last_js,
-                height=70,
+                """,
+                height=80,
             )
-
