@@ -131,6 +131,16 @@ st.markdown(
       background: linear-gradient(120deg,#6366f1,#38bdf8);
       color:#061018; border-color: transparent; font-weight: 800;
     }
+
+
+.st-emotion-cache-12j140x.et2rgd20 p{
+  color:#0b1220;
+}
+
+.st-emotion-cache-12j140x.et2rgd20:hover p{
+  color:#ffffff;
+}
+
     </style>
     """,
     unsafe_allow_html=True,
@@ -291,40 +301,17 @@ def _webrtc_mode_any():
 # --------------------------------------------------
 # 8) LANDING (two colored, right-aligned big buttons)
 # --------------------------------------------------
-# --------------------------------------------------
-# 8) LANDING (two centered buttons in one row)
-# --------------------------------------------------
 if not st.session_state.signalink_started:
-    st.markdown(
-        "<h1 style='text-align:center; margin-top:10px;'>🤟 SIGNALINK</h1>",
-        unsafe_allow_html=True,
-    )
-
-    # Outer columns → left spacer | center content | right spacer
-    left_spacer, center_col, right_spacer = st.columns([1, 2, 1])
-
-    with center_col:
-        # Inner columns → two buttons in a single centered row
-        col_learn, col_trans = st.columns(2)
-
-        with col_learn:
-            st.markdown('<div class="cta learn">', unsafe_allow_html=True)
-            if st.button("📚 Learn Signs", key="cta_learn", use_container_width=True):
-                st.session_state.signalink_started = True
-                st.session_state.signalink_route = "learn"
-                _rerun()
-            st.markdown("</div>", unsafe_allow_html=True)
-
-        with col_trans:
-            st.markdown('<div class="cta signtext">', unsafe_allow_html=True)
-            if st.button("✋ Sign to Text Translator", key="cta_translator", use_container_width=True):
-                st.session_state.signalink_started = True
-                st.session_state.signalink_route = "translator"
-                _rerun()
-            st.markdown("</div>", unsafe_allow_html=True)
-
+    st.markdown("<h1 style='text-align:center; margin-top:10px;'>🤟 SIGNALINK</h1>", unsafe_allow_html=True)
+    if right_aligned_button("📚 Learn Signs", key="cta_learn", css_class="learn"):
+        st.session_state.signalink_started = True
+        st.session_state.signalink_route = "learn"
+        _rerun()
+    if right_aligned_button("✋ Sign to Text Translator", key="cta_translator", css_class="signtext"):
+        st.session_state.signalink_started = True
+        st.session_state.signalink_route = "translator"
+        _rerun()
     st.stop()
-
 
 # --------------------------------------------------
 # 9) ROUTES
