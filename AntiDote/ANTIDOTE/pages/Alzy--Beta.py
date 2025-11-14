@@ -610,6 +610,19 @@ st.markdown(
       margin: 10px 0 14px 0;
       border-radius: 2px;
     }
+
+    /* ===== Tabs text color tweaks ===== */
+    /* All tab labels (active + inactive) */
+    div.stTabs [data-baseweb="tab"] {
+      color: #ffffff !important;           /* make inactive text white */
+      font-weight: 500;
+    }
+
+    /* Active tab label accent */
+    div.stTabs [data-baseweb="tab"][aria-selected="true"] {
+      color: #22d3ee !important;
+      border-bottom: 3px solid #22d3ee !important;
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -897,7 +910,7 @@ def _display_memory_book_gallery():
 if st.session_state.role is None:
     st.markdown("<h1 style='text-align:center;'>🧠 ALZY – Memory Assistant</h1>", unsafe_allow_html=True)
     st.markdown("<h3 style='text-align:center;'>Who are you?</h3>", unsafe_allow_html=True)
-    st.markdown("<div style='height: 20px;'></div>", unsafe_allow_html=True)  # 👈 extra space
+    st.markdown("<div style='height: 20px;'></div>", unsafe_allow_html=True)
 
     # 3 columns: left spacer, center content, right spacer
     left_spacer, center_col, right_spacer = st.columns([1, 2, 1])
@@ -1285,7 +1298,6 @@ else:
                         st.error("Please ask the caregiver to set this place in GPS / Home tab.")
 
     # ---------------- AI Chatbot (Patient) ----------------
-    # ---------------- AI Chatbot (Patient) ----------------
     with tab_ai:
         st.subheader("🤖 AI Chatbot")
         st.caption("Speak (mic) or type. Short, friendly answers.")
@@ -1473,5 +1485,3 @@ else:
                 """,
                 height=60,
             )
-
-
