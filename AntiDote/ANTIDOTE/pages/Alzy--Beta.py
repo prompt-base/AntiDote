@@ -897,6 +897,7 @@ def _display_memory_book_gallery():
 if st.session_state.role is None:
     st.markdown("<h1 style='text-align:center;'>🧠 ALZY – Memory Assistant</h1>", unsafe_allow_html=True)
     st.markdown("<h3 style='text-align:center;'>Who are you?</h3>", unsafe_allow_html=True)
+    st.markdown("<div style='height: 20px;'></div>", unsafe_allow_html=True)  # 👈 extra space
 
     # 3 columns: left spacer, center content, right spacer
     left_spacer, center_col, right_spacer = st.columns([1, 2, 1])
