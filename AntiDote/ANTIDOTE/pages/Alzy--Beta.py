@@ -623,10 +623,7 @@ st.markdown(
       color: #ff4b4b !important;
     #   border-bottom: 3px solid #22d3ee !important;
     }
-        /* Snooze button text color override */
-    .snooze-btn-wrap .stButton > button {
-      color: #0b1220 !important;
-    }
+    
     </style>
     """,
     unsafe_allow_html=True,
