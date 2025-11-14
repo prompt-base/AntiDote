@@ -732,7 +732,7 @@ def _render_reminder_card(
                 with c2:
                     if st.button(
                         "⏰ Snooze",
-                        key=f"{key_prefix}_done_{rec['id']}",
+                        key=f"{key_prefix}_snooze_{rec['id']}",
                         help="Snooze by 10 minutes",
                     ):
                         snooze_reminder(rec, 10)
