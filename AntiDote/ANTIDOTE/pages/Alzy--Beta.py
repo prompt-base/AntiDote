@@ -292,29 +292,36 @@ def _webrtc_mode_any():
 # 8) LANDING (two colored, right-aligned big buttons)
 # --------------------------------------------------
 # --------------------------------------------------
-# 8) LANDING (two colored, centered big buttons)
+# 8) LANDING (two centered buttons in one row)
 # --------------------------------------------------
 if not st.session_state.signalink_started:
-    st.markdown("<h1 style='text-align:center; margin-top:10px;'>🤟 SIGNALINK</h1>", unsafe_allow_html=True)
+    st.markdown(
+        "<h1 style='text-align:center; margin-top:10px;'>🤟 SIGNALINK</h1>",
+        unsafe_allow_html=True,
+    )
 
-    # 4 columns → spacer – Learn – Translator – spacer
-    spacer_left, col_learn, col_trans, spacer_right = st.columns([1, 1, 1, 1])
+    # Outer columns → left spacer | center content | right spacer
+    left_spacer, center_col, right_spacer = st.columns([1, 2, 1])
 
-    with col_learn:
-        st.markdown('<div class="cta learn">', unsafe_allow_html=True)
-        if st.button("📚 Learn Signs", key="cta_learn", use_container_width=True):
-            st.session_state.signalink_started = True
-            st.session_state.signalink_route = "learn"
-            _rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
+    with center_col:
+        # Inner columns → two buttons in a single centered row
+        col_learn, col_trans = st.columns(2)
 
-    with col_trans:
-        st.markdown('<div class="cta signtext">', unsafe_allow_html=True)
-        if st.button("✋ Sign to Text Translator", key="cta_translator", use_container_width=True):
-            st.session_state.signalink_started = True
-            st.session_state.signalink_route = "translator"
-            _rerun()
-        st.markdown('</div>', unsafe_allow_html=True)
+        with col_learn:
+            st.markdown('<div class="cta learn">', unsafe_allow_html=True)
+            if st.button("📚 Learn Signs", key="cta_learn", use_container_width=True):
+                st.session_state.signalink_started = True
+                st.session_state.signalink_route = "learn"
+                _rerun()
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        with col_trans:
+            st.markdown('<div class="cta signtext">', unsafe_allow_html=True)
+            if st.button("✋ Sign to Text Translator", key="cta_translator", use_container_width=True):
+                st.session_state.signalink_started = True
+                st.session_state.signalink_route = "translator"
+                _rerun()
+            st.markdown("</div>", unsafe_allow_html=True)
 
     st.stop()
 
