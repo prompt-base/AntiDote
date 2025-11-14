@@ -1306,67 +1306,75 @@ else:
                 st.markdown(f"- {q}")
 
         # Speak button
-        components.html(
-            """
-            <div style="margin:8px 0 12px 0;">
-              <button id="stt-btn" style="padding:6px 14px;border:none;background:#f97316;color:white;border-radius:8px;cursor:pointer;">
-                🎤 Speak
-              </button>
-              <span id="stt-status" style="margin-left:8px;font-size:12px;color:#fff;"></span>
-            </div>
-            <script>
-            (function(){
-              const btn    = document.getElementById("stt-btn");
-              const status = document.getElementById("stt-status");
-              if (!btn) return;
+components.html(
+    """
+    <div style="margin:8px 0 12px 0;">
+      <button id="stt-btn" style="padding:6px 14px;border:none;background:#f97316;color:white;border-radius:8px;cursor:pointer;">
+        🎤 Speak
+      </button>
+      <span id="stt-status" style="margin-left:8px;font-size:12px;color:#fff;"></span>
+    </div>
 
-              btn.addEventListener("click", function(){
-                status.textContent = "";
-                const isLocal = (location.hostname === "localhost" || location.hostname === "127.0.0.1");
-                if (!window.isSecureContext && !isLocal){
-                  status.textContent = "❌ Mic blocked: use https or localhost.";
-                  return;
-                }
-                const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-                if (!SR){
-                  status.textContent = "❌ SpeechRecognition not supported.";
-                  return;
-                }
-                const rec = new SR();
-                rec.lang = "en-US";
+    <script>
+    (function(){
+      const btn    = document.getElementById("stt-btn");
+      const status = document.getElementById("stt-status");
+      if (!btn) return;
 
-                rec.onstart = function(){
-                  status.textContent = "Listening...";
-                };
-                rec.onerror = function(e){
-                  status.textContent = "❌ " + (e.error || "Error");
-                };
-                rec.onend = function(){
-                  if (status.textContent === "Listening...") {
-                    status.textContent = "";
-                  }
-                };
-                rec.onresult = function(e){
-                  const text = e.results[0][0].transcript;
-                  status.textContent = "Heard: " + text;
-                  try {
-                    // Build URL as: origin + pathname + ?say=...
-                    var topWin = window.top || window;
-                    var base   = topWin.location.origin + topWin.location.pathname;
-                    var newHref = base + "?say=" + encodeURIComponent(text);
-                    window.open(newHref, "_top");
-                  } catch (err) {
-                    console.error(err);
-                    status.textContent = "❌ Could not send speech to app: " + (err && err.message ? err.message : err);
-                  }
-                };
-                rec.start();
-              });
-            })();
-            </script>
-            """,
-            height=110,
-        )
+      btn.addEventListener("click", function(){
+        status.textContent = "";
+
+        const isLocal = (location.hostname === "localhost" || location.hostname === "127.0.0.1");
+        if (!window.isSecureContext && !isLocal){
+          status.textContent = "❌ Mic blocked: use https or localhost.";
+          return;
+        }
+
+        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SR){
+          status.textContent = "❌ SpeechRecognition not supported.";
+          return;
+        }
+
+        const rec = new SR();
+        rec.lang = "en-US";
+
+        rec.onstart = function(){
+          status.textContent = "Listening...";
+        };
+        rec.onerror = function(e){
+          status.textContent = "❌ " + (e.error || "Error");
+        };
+        rec.onend = function(){
+          if (status.textContent === "Listening...") {
+            status.textContent = "";
+          }
+        };
+
+        rec.onresult = function(e){
+          const text = e.results[0][0].transcript;
+
+          // ❌ REMOVE "Heard:"
+          // Do not show recognized text to user
+
+          try {
+            var topWin = window.top || window;
+            var base   = topWin.location.origin + topWin.location.pathname;
+            var newHref = base + "?say=" + encodeURIComponent(text);
+            window.open(newHref, "_top");
+          } catch (err) {
+            console.error(err);
+            status.textContent = "❌ Could not send speech to app.";
+          }
+        };
+
+        rec.start();
+      });
+    })();
+    </script>
+    """,
+    height=110,
+)
 
         # Input handling (speech via ?say=, or typed)
         spoken = get_qp("say")
@@ -1470,3 +1478,4 @@ else:
                 """,
                 height=60,
             )
+
