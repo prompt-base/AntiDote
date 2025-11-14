@@ -625,7 +625,7 @@ st.markdown(
     }
 
 .stTooltipIcon.st-emotion-cache-oj1fi.e1pw9gww0 button p{
-  color:"#fff";
+  color:#fff;
 }
 
 
