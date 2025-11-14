@@ -59,6 +59,10 @@ st.markdown(
   color:#ffffff;
 }
 
+.st-emotion-cache-79elbk.e1o1zy6o0 p{
+color:#ffffff;
+}
+
 
     </style>
     """,
