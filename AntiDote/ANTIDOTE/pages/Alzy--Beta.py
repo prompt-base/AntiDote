@@ -620,7 +620,7 @@ st.markdown(
 
     /* Active tab label accent */
     div.stTabs [data-baseweb="tab"][aria-selected="true"] {
-      color: #ff4b4b !important;
+      color: #22d3ee !important;
     #   border-bottom: 3px solid #22d3ee !important;
     }
     </style>
