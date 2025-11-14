@@ -564,6 +564,14 @@ st.markdown(
       color: #061018 !important; border-radius: 10px !important; padding: 8px 12px !important; font-weight: 700; border:none;
       box-shadow: 0 6px 16px rgba(124,58,237,.35);
     }
+    
+    /* Snooze button specific styling to match other buttons */
+    div[data-testid*="snooze"] button {
+      background-image: linear-gradient(90deg, var(--warn), #fbbf24) !important;
+      color: #061018 !important; border-radius: 10px !important; padding: 8px 12px !important; font-weight: 700; border:none;
+      box-shadow: 0 6px 16px rgba(245,158,11,.35) !important;
+    }
+    
     .btn-ghost button { background:transparent !important; color:#fff !important; border:1px solid var(--border) !important; }
     .btn-danger button { background:#ef4444 !important; color:#fff !important; }
     .btn-warn button { background:#f59e0b !important; color:#111 !important; }
