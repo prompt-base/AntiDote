@@ -623,6 +623,12 @@ st.markdown(
       color: #ff4b4b !important;
     #   border-bottom: 3px solid #22d3ee !important;
     }
+
+.stTooltipIcon.st-emotion-cache-oj1fi.e1pw9gww0 button p{
+  color:"#fff";
+}
+
+
     </style>
     """,
     unsafe_allow_html=True,
@@ -717,8 +723,6 @@ def _render_reminder_card(
 
             if show_actions:
                 c1, c2, c3 = st.columns(3)
-
-                # ✅ Done – base style from .stButton > button
                 with c1:
                     if st.button("✅ Done", key=f"{key_prefix}_done_{rec['id']}"):
                         advance_reminder(rec)
@@ -730,8 +734,6 @@ def _render_reminder_card(
                             )
                         save_runtime_data(data)
                         st.rerun()
-
-                # ⏰ Snooze – EXACT same styling as Done (same st.button)
                 with c2:
                     if st.button(
                         "⏰ Snooze",
@@ -747,8 +749,6 @@ def _render_reminder_card(
                             )
                         save_runtime_data(data)
                         st.rerun()
-
-                # 🗑️ Remove – same base style unless you later override with .btn-danger
                 with c3:
                     if st.button("🗑️ Remove", key=f"{key_prefix}_remove_{rec['id']}"):
                         data["reminders"].pop(rec["id"], None)
@@ -955,7 +955,6 @@ with right:
     if st.button("🔁 Change role"):
         st.session_state.role = None
         st.rerun()
-
 
 # ------------------------------------------------------------
 # CAREGIVER VIEW
