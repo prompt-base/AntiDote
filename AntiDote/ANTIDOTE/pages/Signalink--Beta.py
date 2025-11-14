@@ -131,6 +131,16 @@ st.markdown(
       background: linear-gradient(120deg,#6366f1,#38bdf8);
       color:#061018; border-color: transparent; font-weight: 800;
     }
+
+
+.st-emotion-cache-12j140x.et2rgd20 p{
+  color:#0b1220;
+}
+
+.st-emotion-cache-12j140x.et2rgd20:hover p{
+  color:#ffffff;
+}
+
     </style>
     """,
     unsafe_allow_html=True,
