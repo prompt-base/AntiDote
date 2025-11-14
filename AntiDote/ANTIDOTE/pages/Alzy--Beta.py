@@ -628,6 +628,10 @@ st.markdown(
   color:#0b1220;
 }
 
+.stTooltipIcon.st-emotion-cache-oj1fi.e1pw9gww0 button:hover p{
+  color:#ffffff;
+}
+
 
     </style>
     """,
