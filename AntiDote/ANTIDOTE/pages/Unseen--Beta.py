@@ -60,7 +60,8 @@ st.markdown(
 }
 
 .st-emotion-cache-79elbk.e1o1zy6o0 p,
-.st-emotion-cache-0.e16n7gab17 p{
+.st-emotion-cache-0.e16n7gab17 p,
+.st-emotion-cache-1sm2s1z.e1r0q00f0 p{
 color:#ffffff;
 }
 
