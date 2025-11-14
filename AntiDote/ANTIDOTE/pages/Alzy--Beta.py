@@ -897,16 +897,24 @@ def _display_memory_book_gallery():
 if st.session_state.role is None:
     st.markdown("<h1 style='text-align:center;'>🧠 ALZY – Memory Assistant</h1>", unsafe_allow_html=True)
     st.markdown("<h3 style='text-align:center;'>Who are you?</h3>", unsafe_allow_html=True)
-    c1, c2 = st.columns(2)
-    with c1:
-        if st.button("🧑‍🦽 Patient", key="choose_patient"):
-            st.session_state.role = "patient"
-            st.rerun()
-    with c2:
-        if st.button("🧑‍⚕️ Caregiver", key="choose_caregiver"):
-            st.session_state.role = "caretaker"
-            st.rerun()
+
+    # 3 columns: left spacer, center content, right spacer
+    left_spacer, center_col, right_spacer = st.columns([1, 2, 1])
+
+    with center_col:
+        # inner columns for the two buttons, centered within the middle column
+        c1, c2 = st.columns(2)
+        with c1:
+            if st.button("🧑‍🦽 Patient", key="choose_patient", use_container_width=True):
+                st.session_state.role = "patient"
+                st.rerun()
+        with c2:
+            if st.button("🧑‍⚕️ Caregiver", key="choose_caregiver", use_container_width=True):
+                st.session_state.role = "caretaker"
+                st.rerun()
+
     st.stop()
+
 
 # ------------------------------------------------------------
 # COMMON HEADER
