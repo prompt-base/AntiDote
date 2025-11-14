@@ -561,7 +561,11 @@ st.markdown(
     .mb-0{margin-bottom:0} .mb-1{margin-bottom:.25rem} .mb-2{margin-bottom:.5rem} .mb-3{margin-bottom:1rem}
     .stButton > button {
       background-image: linear-gradient(90deg, var(--brand), var(--brand-2));
-      color: #061018 !important; border-radius: 10px !important; padding: 8px 12px !important; font-weight: 700; border:none;
+      color: #061018 !important; 
+      border-radius: 10px !important; 
+      padding: 8px 12px !important; 
+      font-weight: 700; 
+      border:none;
       box-shadow: 0 6px 16px rgba(124,58,237,.35);
     }
     .btn-ghost button { background:transparent !important; color:#fff !important; border:1px solid var(--border) !important; }
@@ -621,7 +625,14 @@ st.markdown(
     /* Active tab label accent */
     div.stTabs [data-baseweb="tab"][aria-selected="true"] {
       color: #ff4b4b !important;
-    #   border-bottom: 3px solid #22d3ee !important;
+    }
+
+    /* Snooze button specific text colors */
+    .snooze-btn-wrap .stButton > button {
+      color: #0b1220 !important;        /* default text color for Snooze */
+    }
+    .snooze-btn-wrap .stButton > button:hover {
+      color: #ffffff !important;        /* hover text color for Snooze */
     }
     </style>
     """,
@@ -729,6 +740,8 @@ def _render_reminder_card(
                         save_runtime_data(data)
                         st.rerun()
                 with c2:
+                    # Wrap Snooze button so we can target it with CSS
+                    st.markdown("<div class='snooze-btn-wrap'>", unsafe_allow_html=True)
                     if st.button(
                         "⏰ Snooze",
                         key=f"{key_prefix}_snooze_{rec['id']}",
@@ -743,6 +756,7 @@ def _render_reminder_card(
                             )
                         save_runtime_data(data)
                         st.rerun()
+                    st.markdown("</div>", unsafe_allow_html=True)
                 with c3:
                     if st.button("🗑️ Remove", key=f"{key_prefix}_remove_{rec['id']}"):
                         data["reminders"].pop(rec["id"], None)
