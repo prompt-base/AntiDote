@@ -831,7 +831,9 @@ def _render_quiz_simple():
 
     target = data["people"][st.session_state.quiz_target_id]
 
-    st.write("Who is this?")
+    # CHANGED: h3 tag + center align
+    st.markdown("<h3 style='text-align:center;'>Who is this?</h3>", unsafe_allow_html=True)
+
     _c1, _c2, _c3 = st.columns([1, 1.2, 1])
     with _c2:
         ip = target.get("image_path", "")
@@ -1491,6 +1493,7 @@ else:
                     window.speechSynthesis.speak(u);
                   }});
                 }})();
+
                 </script>
                 """,
                 height=60,
