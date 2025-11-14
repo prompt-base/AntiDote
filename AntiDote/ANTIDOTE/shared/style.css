@@ -1,3 +1,7 @@
+body{
+  background: red;
+}
+
 .stApp {
   background: linear-gradient(135deg, #0f172a 0%, #0f172a 40%, #111827 100%);
   color: #ffffff;
