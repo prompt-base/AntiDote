@@ -614,22 +614,16 @@ st.markdown(
     /* ===== Tabs text color tweaks ===== */
     /* All tab labels (active + inactive) */
     div.stTabs [data-baseweb="tab"] {
-      color: #ffffff !important;
+      color: #ffffff !important;           /* make inactive text white */
       font-weight: 500;
     }
 
     /* Active tab label accent */
     div.stTabs [data-baseweb="tab"][aria-selected="true"] {
       color: #ff4b4b !important;
+    #   border-bottom: 3px solid #22d3ee !important;
     }
-
-    /* Snooze button text color & hover – only inside .snooze-btn-wrap */
-    .snooze-btn-wrap .stButton > button {
-      color: #0b1220 !important;
-    }
-    .snooze-btn-wrap .stButton > button:hover {
-      color: #ffffff !important;
-    }
+    
     </style>
     """,
     unsafe_allow_html=True,
@@ -736,8 +730,6 @@ def _render_reminder_card(
                         save_runtime_data(data)
                         st.rerun()
                 with c2:
-                    # Wrap only Snooze button to apply custom text color
-                    st.markdown("<div class='snooze-btn-wrap'>", unsafe_allow_html=True)
                     if st.button(
                         "⏰ Snooze",
                         key=f"{key_prefix}_snooze_{rec['id']}",
@@ -752,7 +744,6 @@ def _render_reminder_card(
                             )
                         save_runtime_data(data)
                         st.rerun()
-                    st.markdown("</div>", unsafe_allow_html=True)
                 with c3:
                     if st.button("🗑️ Remove", key=f"{key_prefix}_remove_{rec['id']}"):
                         data["reminders"].pop(rec["id"], None)
@@ -1176,7 +1167,7 @@ if st.session_state.role == "caretaker":
         for (key, label), col in zip(poi_keys, [cA, cB, cC, cD]):
             with col:
                 if st.button(f"➡️ {label}", key=f"poi_go_{key}"):
-                    poi = data["gps"].get("pois", {}).get(key, {})
+                    poi = data["gps"]["pois"].get(key, {})
                     p_lat = poi.get("lat") or ""
                     p_lon = poi.get("lon") or ""
                     try:
@@ -1444,8 +1435,8 @@ else:
                             j = resp.json()
                             reply_text = (
                                 j.get("choices", [{}])[0]
-                                .get("message", {})
-                                .get("content", "I’m here with you.")
+                                 .get("message", {})
+                                 .get("content", "I’m here with you.")
                             )
                         else:
                             reply_text = f"⚠️ API error {resp.status_code}: {resp.text[:160]}"
