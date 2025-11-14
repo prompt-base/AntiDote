@@ -623,7 +623,6 @@ st.markdown(
       color: #ff4b4b !important;
     #   border-bottom: 3px solid #22d3ee !important;
     }
-    
     </style>
     """,
     unsafe_allow_html=True,
@@ -732,6 +731,7 @@ def _render_reminder_card(
                 with c2:
                     if st.button(
                         "⏰ Snooze",
+                        class="abc"
                         key=f"{key_prefix}_snooze_{rec['id']}",
                         help="Snooze by 10 minutes",
                     ):
