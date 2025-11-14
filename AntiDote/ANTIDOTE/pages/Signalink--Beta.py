@@ -155,6 +155,10 @@ st.markdown(
   color:#ffffff;
 }
 
+.st-emotion-cache-1s2v671.e1gk92lc0 p{
+color:#ffffff;
+}
+
     </style>
     """,
     unsafe_allow_html=True,
