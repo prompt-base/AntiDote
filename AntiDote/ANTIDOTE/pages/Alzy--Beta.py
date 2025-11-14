@@ -1290,6 +1290,7 @@ else:
                         "content": "Hello 👋 I'm your Memory Assistant. How can I help you today?",
                     }
                 ]
+                st.session_state["last_say_used"] = None
                 st.rerun()
 
         # Show chat history
@@ -1304,7 +1305,7 @@ else:
             for q in reversed(past_questions[-5:]):
                 st.markdown(f"- {q}")
 
-        # Speak button – fills the chat input textbox directly
+        # Speak button – sends speech via ?say= in URL
         components.html(
             """
             <div style="margin:8px 0 12px 0;">
@@ -1354,24 +1355,16 @@ else:
 
                 rec.onresult = function(e){
                   const text = e.results[0][0].transcript;
+
                   try {
-                    // Find the Streamlit chat input textarea in the parent document
-                    const parentDoc = window.parent && window.parent.document
-                                      ? window.parent.document
-                                      : document;
-                    const textarea = parentDoc.querySelector('textarea[placeholder="Type your message"]');
-                    if (textarea) {
-                      textarea.value = text;
-                      const ev = new Event('input', { bubbles: true });
-                      textarea.dispatchEvent(ev);
-                      status.textContent = "";
-                    } else {
-                      status.textContent = "❌ Could not find chat box.";
-                    }
+                    // Build new URL with ?say= so Streamlit can read it
+                    var topWin = window.top || window;
+                    var base   = topWin.location.origin + topWin.location.pathname;
+                    var newHref = base + "?say=" + encodeURIComponent(text);
+                    window.open(newHref, "_top");
                   } catch (err) {
                     console.error(err);
-                    status.textContent = "❌ Could not send speech to app: "
-                                         + (err && err.message ? err.message : err);
+                    status.textContent = "❌ Could not send speech to app.";
                   }
                 };
 
@@ -1383,24 +1376,34 @@ else:
             height=110,
         )
 
-        # Typed input (speech just pre-fills this box)
+        # Input handling (speech via ?say=, or typed)
+        spoken = get_qp("say")
+        last_say_used = st.session_state.get("last_say_used")
+
+        # Prevent re-using same ?say= on every rerun
+        if spoken and spoken == last_say_used:
+            spoken = None
+
         typed = st.chat_input("Type your message")
-        user_input = typed
+        user_input = typed or spoken
 
         last_reply: Optional[str] = None
 
         if user_input:
+            st.session_state["last_say_used"] = spoken or typed
+
             # Log user message
             st.session_state.patient_ai_chat.append({"role": "user", "content": user_input})
             with st.chat_message("user"):
                 st.markdown(user_input)
-
+                
+            # Local date/time answers first
             # Local date/time answers first
             local_ans = maybe_local_answer(user_input)
             if local_ans:
                 reply_text = local_ans
             else:
-                reply_text = f"I heard: {user_input}. I couldn't reach AI right now."
+                reply_text = "I couldn't reach AI right now, but I'm here with you."
                 api_key = OPENAI_API_KEY
 
                 today_str = now_local().strftime("%d %B %Y")
@@ -1479,3 +1482,4 @@ else:
                 """,
                 height=60,
             )
+
