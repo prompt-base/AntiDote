@@ -1290,7 +1290,6 @@ else:
                         "content": "Hello 👋 I'm your Memory Assistant. How can I help you today?",
                     }
                 ]
-                st.session_state["last_say_used"] = None
                 st.rerun()
 
         # Show chat history
@@ -1298,47 +1297,49 @@ else:
             with st.chat_message(msg["role"]):
                 st.markdown(msg["content"])
 
-        # Previous questions list (under chat)
+        # Previous questions list (under chat, above Speak)
         past_questions = [m["content"] for m in st.session_state.patient_ai_chat if m["role"] == "user"]
         if past_questions:
             st.markdown("**Previous questions:**")
             for q in reversed(past_questions[-5:]):
                 st.markdown(f"- {q}")
 
-        # Speak button
+        # Speak button – fills the chat input textbox directly
         components.html(
             """
             <div style="margin:8px 0 12px 0;">
-              <button id="stt-btn" style="padding:6px 14px;border:none;background:#f97316;color:white;border-radius:8px;cursor:pointer;">
+              <button id="stt-btn"
+                style="padding:6px 14px;border:none;background:#f97316;color:white;border-radius:8px;cursor:pointer;">
                 🎤 Speak
               </button>
-              <span id="stt-status" style="margin-left:8px;font-size:12px;color:#fff;"></span>
+              <span id="stt-status"
+                style="margin-left:8px;font-size:12px;color:#fff;"></span>
             </div>
-        
+
             <script>
             (function(){
               const btn    = document.getElementById("stt-btn");
               const status = document.getElementById("stt-status");
               if (!btn) return;
-        
+
               btn.addEventListener("click", function(){
                 status.textContent = "";
-        
+
                 const isLocal = (location.hostname === "localhost" || location.hostname === "127.0.0.1");
                 if (!window.isSecureContext && !isLocal){
                   status.textContent = "❌ Mic blocked: use https or localhost.";
                   return;
                 }
-        
+
                 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
                 if (!SR){
                   status.textContent = "❌ SpeechRecognition not supported.";
                   return;
                 }
-        
+
                 const rec = new SR();
                 rec.lang = "en-US";
-        
+
                 rec.onstart = function(){
                   status.textContent = "Listening...";
                 };
@@ -1350,24 +1351,30 @@ else:
                     status.textContent = "";
                   }
                 };
-        
+
                 rec.onresult = function(e){
                   const text = e.results[0][0].transcript;
-        
-                  // ❌ REMOVE "Heard:"
-                  // Do not show recognized text to user
-        
                   try {
-                    var topWin = window.top || window;
-                    var base   = topWin.location.origin + topWin.location.pathname;
-                    var newHref = base + "?say=" + encodeURIComponent(text);
-                    window.open(newHref, "_top");
+                    // Find the Streamlit chat input textarea in the parent document
+                    const parentDoc = window.parent && window.parent.document
+                                      ? window.parent.document
+                                      : document;
+                    const textarea = parentDoc.querySelector('textarea[placeholder="Type your message"]');
+                    if (textarea) {
+                      textarea.value = text;
+                      const ev = new Event('input', { bubbles: true });
+                      textarea.dispatchEvent(ev);
+                      status.textContent = "";
+                    } else {
+                      status.textContent = "❌ Could not find chat box.";
+                    }
                   } catch (err) {
                     console.error(err);
-                    status.textContent = "❌ Could not send speech to app.";
+                    status.textContent = "❌ Could not send speech to app: "
+                                         + (err && err.message ? err.message : err);
                   }
                 };
-        
+
                 rec.start();
               });
             })();
@@ -1376,20 +1383,14 @@ else:
             height=110,
         )
 
-        # Input handling (speech via ?say=, or typed)
-        spoken = get_qp("say")
-        last_say_used = st.session_state.get("last_say_used")
-        if spoken and spoken == last_say_used:
-            spoken = None
-
+        # Typed input (speech just pre-fills this box)
         typed = st.chat_input("Type your message")
-        user_input = typed or spoken
+        user_input = typed
 
         last_reply: Optional[str] = None
 
         if user_input:
-            st.session_state["last_say_used"] = user_input
-
+            # Log user message
             st.session_state.patient_ai_chat.append({"role": "user", "content": user_input})
             with st.chat_message("user"):
                 st.markdown(user_input)
@@ -1478,5 +1479,3 @@ else:
                 """,
                 height=60,
             )
-
-
