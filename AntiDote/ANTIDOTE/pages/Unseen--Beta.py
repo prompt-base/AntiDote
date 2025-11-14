@@ -36,6 +36,30 @@ st.markdown(
       padding: 12px 14px;
       margin-bottom: 12px;
     }
+
+
+    /* ===== Tabs text color tweaks ===== */
+    /* All tab labels (active + inactive) */
+    div.stTabs [data-baseweb="tab"] {
+      color: #ffffff !important;           /* make inactive text white */
+      font-weight: 500;
+    }
+
+    /* Active tab label accent */
+    div.stTabs [data-baseweb="tab"][aria-selected="true"] {
+      color: #ff4b4b !important;
+    #   border-bottom: 3px solid #22d3ee !important;
+    }
+
+.stButton.st-emotion-cache-8atqhb.e1mlolmg0 button p{
+  color:#0b1220;
+}
+
+.stButton.st-emotion-cache-8atqhb.e1mlolmg0 button:hover p{
+  color:#ffffff;
+}
+
+
     </style>
     """,
     unsafe_allow_html=True,
