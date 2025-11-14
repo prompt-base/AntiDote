@@ -1276,12 +1276,13 @@ else:
                         st.error("Please ask the caregiver to set this place in GPS / Home tab.")
 
     # ---------------- AI Chatbot (Patient) ----------------
+    # ---------------- AI Chatbot (Patient) ----------------
     with tab_ai:
         st.subheader("🤖 AI Chatbot")
         st.caption("Speak (mic) or type. Short, friendly answers.")
 
         # Clear previous button
-        col_clear, col_spacer = st.columns([1, 3])
+        col_clear, _ = st.columns([1, 3])
         with col_clear:
             if st.button("🧹 Clear previous"):
                 st.session_state.patient_ai_chat = [
@@ -1290,7 +1291,6 @@ else:
                         "content": "Hello 👋 I'm your Memory Assistant. How can I help you today?",
                     }
                 ]
-                st.session_state["last_say_used"] = None
                 st.rerun()
 
         # Show chat history
@@ -1298,14 +1298,14 @@ else:
             with st.chat_message(msg["role"]):
                 st.markdown(msg["content"])
 
-        # Previous questions list (under chat, above Speak)
+        # Previous questions (last 5 user messages)
         past_questions = [m["content"] for m in st.session_state.patient_ai_chat if m["role"] == "user"]
         if past_questions:
             st.markdown("**Previous questions:**")
             for q in reversed(past_questions[-5:]):
                 st.markdown(f"- {q}")
 
-        # Speak button – sends speech via ?say= in URL
+        # Speak button – just listens and shows what it heard (no URL navigation)
         components.html(
             """
             <div style="margin:8px 0 12px 0;">
@@ -1326,7 +1326,8 @@ else:
               btn.addEventListener("click", function(){
                 status.textContent = "";
 
-                const isLocal = (location.hostname === "localhost" || location.hostname === "127.0.0.1");
+                const isLocal =
+                  (location.hostname === "localhost" || location.hostname === "127.0.0.1");
                 if (!window.isSecureContext && !isLocal){
                   status.textContent = "❌ Mic blocked: use https or localhost.";
                   return;
@@ -1355,17 +1356,8 @@ else:
 
                 rec.onresult = function(e){
                   const text = e.results[0][0].transcript;
-
-                  try {
-                    // Build new URL with ?say= so Streamlit can read it
-                    var topWin = window.top || window;
-                    var base   = topWin.location.origin + topWin.location.pathname;
-                    var newHref = base + "?say=" + encodeURIComponent(text);
-                    window.open(newHref, "_top");
-                  } catch (err) {
-                    console.error(err);
-                    status.textContent = "❌ Could not send speech to app.";
-                  }
+                  // Just show what was heard; user can type it below
+                  status.textContent = "Heard: " + text;
                 };
 
                 rec.start();
@@ -1376,29 +1368,17 @@ else:
             height=110,
         )
 
-        # Input handling (speech via ?say=, or typed)
-        spoken = get_qp("say")
-        last_say_used = st.session_state.get("last_say_used")
-
-        # Prevent re-using same ?say= on every rerun
-        if spoken and spoken == last_say_used:
-            spoken = None
-
-        typed = st.chat_input("Type your message")
-        user_input = typed or spoken
-
+        # Only typed input is used as user message (chat_input works normally)
+        user_input = st.chat_input("Type your message")
         last_reply: Optional[str] = None
 
         if user_input:
-            st.session_state["last_say_used"] = spoken or typed
-
             # Log user message
             st.session_state.patient_ai_chat.append({"role": "user", "content": user_input})
             with st.chat_message("user"):
                 st.markdown(user_input)
-                
-            # Local date/time answers first
-            # Local date/time answers first
+
+            # Local date/time answers first (IST-aware)
             local_ans = maybe_local_answer(user_input)
             if local_ans:
                 reply_text = local_ans
@@ -1433,8 +1413,8 @@ else:
                             j = resp.json()
                             reply_text = (
                                 j.get("choices", [{}])[0]
-                                .get("message", {})
-                                .get("content", "I’m here with you.")
+                                 .get("message", {})
+                                 .get("content", "I’m here with you.")
                             )
                         else:
                             reply_text = f"⚠️ API error {resp.status_code}: {resp.text[:160]}"
@@ -1449,6 +1429,7 @@ else:
             st.session_state.patient_ai_chat.append({"role": "assistant", "content": reply_text})
             last_reply = reply_text
         else:
+            # No new input – use last assistant message for "Read aloud"
             for m in reversed(st.session_state.patient_ai_chat):
                 if m["role"] == "assistant":
                     last_reply = m["content"]
@@ -1459,7 +1440,8 @@ else:
             safe_last = json.dumps(last_reply)
             components.html(
                 f"""
-                <button id="tts-btn" style="margin-top:10px;padding:6px 14px;border:none;background:#0ea5e9;color:white;border-radius:8px;cursor:pointer;">
+                <button id="tts-btn"
+                  style="margin-top:10px;padding:6px 14px;border:none;background:#0ea5e9;color:white;border-radius:8px;cursor:pointer;">
                   🔊 Read aloud last answer
                 </button>
                 <script>
@@ -1482,4 +1464,5 @@ else:
                 """,
                 height=60,
             )
+
 
