@@ -165,23 +165,6 @@ st.markdown(
       margin-bottom: 12px;
       box-shadow: 0 10px 30px rgba(0,0,0,.25);
     }
-    .cat-pill {
-      display:inline-block;
-      background: rgba(99,102,241,0.12);
-      border: 1px solid rgba(99,102,241,0.25);
-      padding: 7px 14px;
-      border-radius: 999px;
-      font-size: 14px;
-      margin-right: 8px;
-      margin-bottom: 8px;
-      user-select:none;
-    }
-    .cat-pill.active {
-      background: linear-gradient(120deg,#6366f1,#38bdf8);
-      color:#061018;
-      border-color: transparent;
-      font-weight: 800;
-    }
 
     /* Tabs text color tweaks */
     div.stTabs [data-baseweb="tab"] {
@@ -425,19 +408,17 @@ if route == "learn":
     with tab_learn:
         st.subheader("📚 Learn Signs")
         st.caption("Browse sample signs and hints.")
+
         st.write("**Categories**")
         all_cats = ["All"] + CATEGORIES
         pill_cols = st.columns(len(all_cats))
 
         for i, cat_name in enumerate(all_cats):
-            active = "active" if st.session_state.get("signalink_cat", "All") == cat_name else ""
-            if pill_cols[i].button(cat_name, key=f"pill_{cat_name}"):
+            is_active = st.session_state.get("signalink_cat", "All") == cat_name
+            label = f"✅ {cat_name}" if is_active else cat_name
+            if pill_cols[i].button(label, key=f"pill_{cat_name}"):
                 st.session_state["signalink_cat"] = cat_name
                 _rerun()
-            pill_cols[i].markdown(
-                f"<span class='cat-pill {active}'>{cat_name}</span>",
-                unsafe_allow_html=True,
-            )
 
         cat = st.session_state.get("signalink_cat", "All")
         filtered = (
