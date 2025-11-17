@@ -194,27 +194,7 @@ st.markdown(
       transform: translateY(0);
       filter: brightness(0.98);
     }
-
-    /* Card look for Streamlit images (sign cards) */
-    div[data-testid="stImage"] {
-      background: rgba(3,16,22,.45);
-      border: 1px solid rgba(255,255,255,.08);
-      border-radius: 16px;
-      padding: 12px 14px;
-      margin-bottom: 12px;
-      box-shadow: 0 10px 30px rgba(0,0,0,.25);
-    }
-
-    /* Make all sign images uniform */
-    div[data-testid="stImage"] img {
-      width: 100% !important;
-      height: 190px !important;       /* adjust 170–220 if you want taller/shorter */
-      object-fit: contain;            /* keep full hand visible */
-      background: rgba(6,16,24,0.9);  /* dark background behind transparent PNGs */
-      border-radius: 12px;
-      padding: 6px;
-    }
-    /* NEXT button style on Practice tab */
+ /* NEXT button style on Practice tab */
     .next-btn .stButton>button {
       background: linear-gradient(135deg, #f59e0b, #ec4899);
       color: #0b1220;
@@ -235,7 +215,26 @@ st.markdown(
       filter: brightness(0.98);
     }
 
+    /* Card look for Streamlit images (sign cards) */
+    div[data-testid="stImage"] {
+      background: rgba(3,16,22,.45);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 16px;
+      padding: 12px 14px;
+      margin-bottom: 12px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.25);
+    }
 
+    /* Make all sign images uniform */
+    div[data-testid="stImage"] img {
+      width: 100% !important;
+      height: 190px !important;       /* adjust 170–220 if you want taller/shorter */
+      object-fit: contain;            /* keep full hand visible */
+      background: rgba(6,16,24,0.9);  /* dark background behind transparent PNGs */
+      border-radius: 12px;
+      padding: 6px;
+    }
+   
     /* Tabs text color tweaks */
     div.stTabs [data-baseweb="tab"] {
       color: #ffffff !important;
@@ -866,6 +865,7 @@ else:
             3. Open **✋ Live Translator** and keep one hand in frame—predictions appear with confidence.
             """
         )
+
 
 
 
