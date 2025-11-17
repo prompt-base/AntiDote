@@ -388,9 +388,7 @@ if route == "learn":
                 _rerun()
             pill_cols[i].markdown(f"<span class='cat-pill {active}'>{cat_name}</span>", unsafe_allow_html=True)
 
-        # --st.selectbox("Choose a category", all_cats, key="signalink_cat")--#
-
-        cat = st.session_state.get("signalink_cat", "All")
+       cat = st.session_state.get("signalink_cat", "All")
         filtered = SIGN_DATA if cat == "All" else [s for s in SIGN_DATA if s["category"] == cat]
         cols = st.columns(3)
         for i, sign in enumerate(filtered):
@@ -625,5 +623,6 @@ else:
             3. Open **✋ Live Translator** and keep one hand in frame—predictions appear with confidence.
             """
         )
+
 
 
