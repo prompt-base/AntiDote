@@ -194,7 +194,8 @@ st.markdown(
       filter: brightness(0.98);
     }
 
-    .sign-card {
+    /* Card look for Streamlit images (sign cards) */
+    div[data-testid="stImage"] {
       background: rgba(3,16,22,.45);
       border: 1px solid rgba(255,255,255,.08);
       border-radius: 16px;
@@ -202,8 +203,9 @@ st.markdown(
       margin-bottom: 12px;
       box-shadow: 0 10px 30px rgba(0,0,0,.25);
     }
-        /* Make all sign images uniform */
-    .sign-card img {
+
+    /* Make all sign images uniform */
+    div[data-testid="stImage"] img {
       width: 100% !important;
       height: 190px !important;       /* adjust 170–220 if you want taller/shorter */
       object-fit: contain;            /* keep full hand visible */
@@ -476,7 +478,6 @@ if route == "learn":
         cols = st.columns(3)
         for i, sign in enumerate(filtered):
             with cols[i % 3]:
-                st.markdown("<div class='sign-card'>", unsafe_allow_html=True)
                 img_path = sign["image"]
                 st.image(
                     img_path
@@ -492,7 +493,6 @@ if route == "learn":
                     if sign["word"] not in learned:
                         learned.append(sign["word"])
                     st.success(f"Marked {sign['word']} as learned ✅")
-                st.markdown("</div>", unsafe_allow_html=True)
 
     # PRACTICE
     with tab_practice:
@@ -791,6 +791,7 @@ else:
             3. Open **✋ Live Translator** and keep one hand in frame—predictions appear with confidence.
             """
         )
+
 
 
 
