@@ -132,32 +132,30 @@ st.markdown(
       color:#061018; border-color: transparent; font-weight: 800;
     }
 
-
-
     /* ===== Tabs text color tweaks ===== */
     /* All tab labels (active + inactive) */
     div.stTabs [data-baseweb="tab"] {
-      color: #ffffff !important;           /* make inactive text white */
+      color: #ffffff !important;
       font-weight: 500;
     }
 
     /* Active tab label accent */
     div.stTabs [data-baseweb="tab"][aria-selected="true"] {
       color: #ff4b4b !important;
-    #   border-bottom: 3px solid #22d3ee !important;
     }
 
-.st-emotion-cache-12j140x.et2rgd20 p{
-  color:#0b1220;
-}
+    /* Button text color overrides (be careful: may change with Streamlit versions) */
+    .st-emotion-cache-12j140x.et2rgd20 p{
+      color:#0b1220;
+    }
 
-.st-emotion-cache-12j140x.et2rgd20:hover p{
-  color:#ffffff;
-}
+    .st-emotion-cache-12j140x.et2rgd20:hover p{
+      color:#ffffff;
+    }
 
-.st-emotion-cache-1s2v671.e1gk92lc0 p{
-color:#ffffff;
-}
+    .st-emotion-cache-1s2v671.e1gk92lc0 p{
+      color:#ffffff;
+    }
 
     </style>
     """,
@@ -174,18 +172,7 @@ st.session_state.setdefault("learn_progress", {"learned": [], "quiz_scores": []}
 st.session_state.setdefault(MODEL_STATE_KEY, {"clf": None, "labels": []})
 
 # --------------------------------------------------
-# 4) UTIL: right-aligned big button
-# --------------------------------------------------
-def right_aligned_button(label: str, key: str, css_class: str = "") -> bool:
-    spacer, btncol = st.columns([8, 2])  # push right
-    with btncol:
-        st.markdown(f'<div class="cta {css_class}">', unsafe_allow_html=True)
-        pressed = st.button(label, key=key, use_container_width=True)
-        st.markdown('</div>', unsafe_allow_html=True)
-        return pressed
-
-# --------------------------------------------------
-# 5) DB HELPERS (for KNN samples)
+# 4) DB HELPERS (for KNN samples)
 # --------------------------------------------------
 def load_db() -> Dict[str, List[List[float]]]:
     if GESTURE_DB_PATH.exists():
@@ -204,7 +191,7 @@ def db_counts(db: Dict[str, List[List[float]]]) -> Dict[str, int]:
     return {k: len(v) for k, v in db.items()}
 
 # --------------------------------------------------
-# 6) MEDIAPIPE FEATURE EXTRACTION (optimized)
+# 5) MEDIAPIPE FEATURE EXTRACTION (optimized)
 # --------------------------------------------------
 def _require(pkgs: List[str]) -> bool:
     if not pkgs:
@@ -279,7 +266,7 @@ def extract_hand_vector_snapshot(img: Image.Image | np.ndarray) -> Tuple[Optiona
     return vec, handed
 
 # --------------------------------------------------
-# 7) CLASSIFIER
+# 6) CLASSIFIER
 # --------------------------------------------------
 def train_classifier(db: Dict[str, List[List[float]]]):
     if not _require(["scikit-learn"]):
@@ -317,25 +304,63 @@ def _webrtc_mode_any():
     return getattr(WebRtcMode, "LIVE", None) or getattr(WebRtcMode, "SENDRECV")
 
 # --------------------------------------------------
-# 8) LANDING (two colored, right-aligned big buttons)
+# 7) LANDING (two centered big buttons)
 # --------------------------------------------------
-if not st.session_state.signalink_started:
-    st.markdown("<h1 style='text-align:center; margin-top:10px;'>🤟 SIGNALINK</h1>", unsafe_allow_html=True)
-    if right_aligned_button("📚 Learn Signs", key="cta_learn", css_class="learn"):
-        st.session_state.signalink_started = True
-        st.session_state.signalink_route = "learn"
-        _rerun()
-    if right_aligned_button("✋ Sign to Text Translator", key="cta_translator", css_class="signtext"):
-        st.session_state.signalink_started = True
-        st.session_state.signalink_route = "translator"
-        _rerun()
+# Decide which route we are currently in
+current_route = st.session_state.get("signalink_route", None)
+
+# If we have not started yet, or route is invalid, show the landing dashboard
+if not st.session_state["signalink_started"] or current_route not in ("learn", "translator"):
+    st.markdown(
+        "<h1 style='text-align:center; margin-top:10px;'>🤟 SIGNALINK</h1>",
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        "<p style='text-align:center; font-size:1.05rem; opacity:0.9;'>"
+        "Learn signs step by step, or try the live Sign → Text translator."
+        "</p>",
+        unsafe_allow_html=True,
+    )
+
+    # Centered two-CTA layout: [spacer] [buttons block] [spacer]
+    left_spacer, center_block, right_spacer = st.columns([1, 2, 1])
+    with center_block:
+        btn_col1, btn_col2 = st.columns(2)
+
+        with btn_col1:
+            st.markdown('<div class="cta learn">', unsafe_allow_html=True)
+            if st.button("📚 Learn Signs", key="cta_learn", use_container_width=True):
+                st.session_state["signalink_started"] = True
+                st.session_state["signalink_route"] = "learn"
+                _rerun()
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        with btn_col2:
+            st.markdown('<div class="cta signtext">', unsafe_allow_html=True)
+            if st.button("✋ Sign to Text Translator", key="cta_translator", use_container_width=True):
+                st.session_state["signalink_started"] = True
+                st.session_state["signalink_route"] = "translator"
+                _rerun()
+            st.markdown("</div>", unsafe_allow_html=True)
+
     st.stop()
 
+# From here on, we know we are in an inner route
+route = st.session_state.get("signalink_route", "learn")
+
 # --------------------------------------------------
-# 9) ROUTES
+# 8) BACK TO DASHBOARD + TITLE
 # --------------------------------------------------
-route = st.session_state.signalink_route or "learn"
-st.title("🤟 SIGNALINK")
+back_col, title_col = st.columns([1, 6])
+with back_col:
+    if st.button("⬅️ Back to Dashboard", key="btn_back_dashboard"):
+        # Reset route and show landing on next run
+        st.session_state["signalink_started"] = False
+        st.session_state["signalink_route"] = None
+        _rerun()
+
+with title_col:
+    st.title("🤟 SIGNALINK")
 
 # -------------- LEARN ROUTE --------------
 if route == "learn":
@@ -350,27 +375,31 @@ if route == "learn":
         all_cats = ["All"] + CATEGORIES
         pill_cols = st.columns(len(all_cats))
         for i, cat_name in enumerate(all_cats):
-            active = "active" if st.session_state.signalink_cat == cat_name else ""
+            active = "active" if st.session_state.get("signalink_cat", "All") == cat_name else ""
             if pill_cols[i].button(cat_name, key=f"pill_{cat_name}"):
-                st.session_state.signalink_cat = cat_name
+                st.session_state["signalink_cat"] = cat_name
+                _rerun()
             pill_cols[i].markdown(f"<span class='cat-pill {active}'>{cat_name}</span>", unsafe_allow_html=True)
 
         st.selectbox("Choose a category", all_cats, key="signalink_cat")
 
-        cat = st.session_state.signalink_cat
+        cat = st.session_state.get("signalink_cat", "All")
         filtered = SIGN_DATA if cat == "All" else [s for s in SIGN_DATA if s["category"] == cat]
         cols = st.columns(3)
         for i, sign in enumerate(filtered):
             with cols[i % 3]:
                 st.markdown("<div class='sign-card'>", unsafe_allow_html=True)
                 img_path = sign["image"]
-                st.image(img_path if (img_path and os.path.exists(img_path))
-                         else "https://via.placeholder.com/300x180?text=SIGN", use_container_width=True)
+                st.image(
+                    img_path if (img_path and os.path.exists(img_path))
+                    else "https://via.placeholder.com/300x180?text=SIGN",
+                    use_container_width=True,
+                )
                 st.markdown(f"**{sign['word']}**")
                 st.caption(f"Category: {sign['category']}")
                 st.caption(f"Hint: {sign['hint']}")
                 if st.button(f"Mark learned", key=f"learn_{sign['word']}"):
-                    learned = st.session_state.learn_progress["learned"]
+                    learned = st.session_state["learn_progress"]["learned"]
                     if sign["word"] not in learned:
                         learned.append(sign["word"])
                     st.success(f"Marked {sign['word']} as learned ✅")
@@ -386,17 +415,20 @@ if route == "learn":
 
         idx = st.session_state.practice_order[st.session_state.practice_idx % len(SIGN_DATA)]
         item = SIGN_DATA[idx]
-        st.image(item["image"] if os.path.exists(item["image"])
-                 else "https://via.placeholder.com/420x240?text=SIGN", use_container_width=False)
+        st.image(
+            item["image"] if os.path.exists(item["image"])
+            else "https://via.placeholder.com/420x240?text=SIGN",
+            use_container_width=False,
+        )
         ans = st.text_input("Your answer (word):", key="practice_answer")
         col_a, col_b = st.columns(2)
         if col_a.button("Check"):
             if ans.strip().lower() == item["word"].lower():
                 st.success("✅ Correct!")
-                st.session_state.learn_progress["quiz_scores"].append({"word": item["word"], "correct": True})
+                st.session_state["learn_progress"]["quiz_scores"].append({"word": item["word"], "correct": True})
             else:
                 st.error(f"❌ Incorrect. It was **{item['word']}**")
-                st.session_state.learn_progress["quiz_scores"].append({"word": item["word"], "correct": False})
+                st.session_state["learn_progress"]["quiz_scores"].append({"word": item["word"], "correct": False})
         if col_b.button("Next"):
             st.session_state.practice_idx += 1
             _rerun()
@@ -404,8 +436,8 @@ if route == "learn":
     # PROGRESS
     with tab_progress:
         st.subheader("📊 Progress")
-        learned = st.session_state.learn_progress["learned"]
-        scores = st.session_state.learn_progress["quiz_scores"]
+        learned = st.session_state["learn_progress"]["learned"]
+        scores = st.session_state["learn_progress"]["quiz_scores"]
         st.write(f"✅ Signs learned: {len(learned)}")
         if learned:
             st.write(", ".join(learned))
@@ -514,7 +546,10 @@ else:
                         if label is None:
                             st.error("Model not ready or could not predict.")
                         else:
-                            st.success(f"Prediction: **{label}**" + (f"  ({prob*100:.1f}% conf.)" if prob else ""))
+                            st.success(
+                                f"Prediction: **{label}**"
+                                + (f"  ({prob*100:.1f}% conf.)" if prob else "")
+                            )
 
     # SAMPLES & TRAIN
     with tab_samples:
