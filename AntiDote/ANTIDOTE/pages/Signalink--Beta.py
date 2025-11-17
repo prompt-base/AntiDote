@@ -65,6 +65,7 @@ MODEL_STATE_KEY = "signalink_knn_model"
 
 # Demo dataset (expand with your own images in signalink_assets/images)
 SIGN_DATA = [
+    # ===== BASIC / POLITE PHRASES =====
     {
         "word": "Hello",
         "category": "Basic",
@@ -72,10 +73,22 @@ SIGN_DATA = [
         "hint": "Hand up, small wave.",
     },
     {
-        "word": "Thank you",
+        "word": "Goodbye",
         "category": "Basic",
-        "image": str(IMAGES_DIR / "thankyou.png"),
-        "hint": "From chin outward.",
+        "image": str(IMAGES_DIR / "goodbye.png"),
+        "hint": "Open hand, small wave away.",
+    },
+    {
+        "word": "Yes",
+        "category": "Basic",
+        "image": str(IMAGES_DIR / "yes.png"),
+        "hint": "Fist nodding up and down.",
+    },
+    {
+        "word": "Please",
+        "category": "Basic",
+        "image": str(IMAGES_DIR / "please.png"),
+        "hint": "Flat hand circles over chest.",
     },
     {
         "word": "Sorry",
@@ -84,30 +97,47 @@ SIGN_DATA = [
         "hint": "Closed fist over chest.",
     },
     {
+        "word": "Thank you",
+        "category": "Basic",
+        "image": str(IMAGES_DIR / "thankyou.png"),
+        "hint": "From chin outward.",
+    },
+
+    # ===== DAILY ACTIONS =====
+    {
         "word": "Eat",
         "category": "Daily",
         "image": str(IMAGES_DIR / "eat.png"),
-        "hint": "Fingers to mouth.",
+        "hint": "Fingertips move toward mouth.",
     },
-    {
-        "word": "Help",
-        "category": "Daily",
-        "image": str(IMAGES_DIR / "help.png"),
-        "hint": "Thumb-up on palm.",
-    },
+
+    # ===== PEOPLE / FAMILY =====
     {
         "word": "Mother",
         "category": "People",
         "image": str(IMAGES_DIR / "mother.png"),
-        "hint": "Thumb to chin.",
+        "hint": "Thumb taps chin, fingers spread.",
     },
     {
         "word": "Father",
         "category": "People",
         "image": str(IMAGES_DIR / "father.png"),
-        "hint": "Thumb to forehead.",
+        "hint": "Thumb taps forehead, fingers spread.",
+    },
+    {
+        "word": "Brother",
+        "category": "People",
+        "image": str(IMAGES_DIR / "brother.jpg"),
+        "hint": "Two L-hands tap together at chest.",
+    },
+    {
+        "word": "Daughter",
+        "category": "People",
+        "image": str(IMAGES_DIR / "daughter.jpg"),
+        "hint": "Hand from chin down to cradled arm.",
     },
 ]
+
 CATEGORIES = sorted(list({s["category"] for s in SIGN_DATA}))
 LABELS = [s["word"] for s in SIGN_DATA]
 
@@ -744,3 +774,4 @@ else:
             3. Open **✋ Live Translator** and keep one hand in frame—predictions appear with confidence.
             """
         )
+
