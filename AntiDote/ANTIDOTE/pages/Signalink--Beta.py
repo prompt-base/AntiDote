@@ -60,18 +60,18 @@ REPO_ROOT = PROJECT_DIR.parent                     # .../ANTIDOTE
 
 # All sign images live in: AntiDote/ANTIDOTE/images/
 IMAGES_DIR = REPO_ROOT / "images"
-
-# Optional: make sure folder exists (won't delete anything)
 IMAGES_DIR.mkdir(parents=True, exist_ok=True)
 
-# We'll still keep gesture_db.json under signalink_assets
+# Gesture DB under signalink_assets
 SIGNALINK_ASSETS = REPO_ROOT / "signalink_assets"
 SIGNALINK_ASSETS.mkdir(parents=True, exist_ok=True)
 GESTURE_DB_PATH = SIGNALINK_ASSETS / "gesture_db.json"
 
 MODEL_STATE_KEY = "signalink_knn_model"
 
-
+# --------------------------------------------------
+# SIGN DATA
+# --------------------------------------------------
 SIGN_DATA = [
     # ===== BASIC / POLITE PHRASES =====
     {
@@ -165,7 +165,7 @@ st.markdown(
     h1,h2,h3,h4 { color: #fff !important; }
     img { border-radius: 12px; }
 
-    /* Reusable big buttons */
+    /* Reusable big CTA buttons */
     .cta .stButton>button {
       width: 100%;
       padding: 22px 28px;
@@ -194,28 +194,8 @@ st.markdown(
       transform: translateY(0);
       filter: brightness(0.98);
     }
- /* NEXT button style on Practice tab */
-    .next-btn .stButton>button {
-      background: linear-gradient(135deg, #f59e0b, #ec4899);
-      color: #0b1220;
-      font-weight: 700;
-      border-radius: 999px;
-      padding: 0.5rem 1.6rem;
-      border: none;
-      box-shadow: 0 10px 25px rgba(236,72,153,0.45);
-    }
 
-    .next-btn .stButton>button:hover {
-      transform: translateY(-1px);
-      filter: brightness(1.05);
-    }
-
-    .next-btn .stButton>button:active {
-      transform: translateY(0);
-      filter: brightness(0.98);
-    }
-
-    /* Card look for Streamlit images (sign cards) */
+    /* Card look for all Streamlit images (sign cards) */
     div[data-testid="stImage"] {
       background: rgba(3,16,22,.45);
       border: 1px solid rgba(255,255,255,.08);
@@ -228,13 +208,13 @@ st.markdown(
     /* Make all sign images uniform */
     div[data-testid="stImage"] img {
       width: 100% !important;
-      height: 190px !important;       /* adjust 170–220 if you want taller/shorter */
-      object-fit: contain;            /* keep full hand visible */
-      background: rgba(6,16,24,0.9);  /* dark background behind transparent PNGs */
+      height: 190px !important;
+      object-fit: contain;
+      background: rgba(6,16,24,0.9);
       border-radius: 12px;
       padding: 6px;
     }
-   
+
     /* Tabs text color tweaks */
     div.stTabs [data-baseweb="tab"] {
       color: #ffffff !important;
@@ -253,6 +233,25 @@ st.markdown(
     }
     .st-emotion-cache-1s2v671.e1gk92lc0 p{
       color:#ffffff;
+    }
+
+    /* NEXT button style on Practice tab */
+    .next-btn .stButton>button {
+      background: linear-gradient(135deg, #f59e0b, #ec4899);
+      color: #0b1220;
+      font-weight: 700;
+      border-radius: 999px;
+      padding: 0.5rem 1.6rem;
+      border: none;
+      box-shadow: 0 10px 25px rgba(236,72,153,0.45);
+    }
+    .next-btn .stButton>button:hover {
+      transform: translateY(-1px);
+      filter: brightness(1.05);
+    }
+    .next-btn .stButton>button:active {
+      transform: translateY(0);
+      filter: brightness(0.98);
     }
     </style>
     """,
@@ -495,6 +494,7 @@ if route == "learn":
             if cat == "All"
             else [s for s in SIGN_DATA if s["category"] == cat]
         )
+
         cols = st.columns(3)
         for i, sign in enumerate(filtered):
             with cols[i % 3]:
@@ -514,7 +514,6 @@ if route == "learn":
                         learned.append(sign["word"])
                     st.success(f"Marked {sign['word']} as learned ✅")
 
-    # PRACTICE
     # PRACTICE
     with tab_practice:
         st.subheader("🧪 Practice")
@@ -545,10 +544,10 @@ if route == "learn":
             "practice_options" not in st.session_state
             or st.session_state.practice_options.get("target") != item["word"]
         ):
-            # Build 1 correct + 2 random wrong options -> total 3
+            # Build 1 correct + up to 2 random wrong options -> total 3 or fewer
             other_words = [w for w in LABELS if w != item["word"]]
             num_wrong = min(2, len(other_words))
-            wrong = random.sample(other_words, k=num_wrong)
+            wrong = random.sample(other_words, k=num_wrong) if num_wrong > 0 else []
             options = wrong + [item["word"]]
             random.shuffle(options)
             st.session_state.practice_options = {
@@ -561,10 +560,12 @@ if route == "learn":
 
         st.write("Choose the correct word:")
 
-        # Render options as buttons (3 in one row)
-        opt_cols = st.columns(3)
+        # Render options as buttons (in one row, up to 3 columns)
+        num_cols = max(1, min(3, len(options)))
+        opt_cols = st.columns(num_cols)
         for i, opt in enumerate(options):
-            with opt_cols[i]:
+            col = opt_cols[i % num_cols]
+            with col:
                 if st.button(
                     opt,
                     key=f"practice_opt_{st.session_state.practice_idx}_{i}",
@@ -865,10 +866,3 @@ else:
             3. Open **✋ Live Translator** and keep one hand in frame—predictions appear with confidence.
             """
         )
-
-
-
-
-
-
-
