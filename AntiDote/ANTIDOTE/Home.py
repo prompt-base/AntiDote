@@ -52,7 +52,7 @@ with col2:
     </div>
     """, unsafe_allow_html=True)
     if st.button("📶 Open SIGNA·LINK", use_container_width=True):
-        st.switch_page("pages/SignaLink--Beta.py")
+        st.switch_page("pages/Signalink--Beta.py")
 
 with col3:
     st.markdown("""
@@ -120,4 +120,5 @@ st.markdown("""
     </p>
 </div>
 """, unsafe_allow_html=True)
+
 
