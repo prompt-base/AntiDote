@@ -54,16 +54,23 @@ except Exception:
 # --------------------------------------------------
 # 1) PATHS / ASSETS
 # --------------------------------------------------
-REPO_ROOT = Path(__file__).resolve().parents[1]  # .../ANTIDOTE
-SIGNALINK_ASSETS = REPO_ROOT / "signalink_assets"
-IMAGES_DIR = SIGNALINK_ASSETS / "images"
-SIGNALINK_ASSETS.mkdir(parents=True, exist_ok=True)
+PROJECT_DIR = Path(__file__).resolve().parent      # .../ANTIDOTE/pages
+REPO_ROOT = PROJECT_DIR.parent                     # .../ANTIDOTE
+
+# All sign images live in: AntiDote/ANTIDOTE/images/
+IMAGES_DIR = REPO_ROOT / "images"
+
+# Optional: make sure folder exists (won't delete anything)
 IMAGES_DIR.mkdir(parents=True, exist_ok=True)
 
-GESTURE_DB_PATH = SIGNALINK_ASSETS / "gesture_db.json"  # KNN training samples
+# We'll still keep gesture_db.json under signalink_assets
+SIGNALINK_ASSETS = REPO_ROOT / "signalink_assets"
+SIGNALINK_ASSETS.mkdir(parents=True, exist_ok=True)
+GESTURE_DB_PATH = SIGNALINK_ASSETS / "gesture_db.json"
+
 MODEL_STATE_KEY = "signalink_knn_model"
 
-# Demo dataset (expand with your own images in signalink_assets/images)
+
 SIGN_DATA = [
     # ===== BASIC / POLITE PHRASES =====
     {
@@ -774,4 +781,5 @@ else:
             3. Open **✋ Live Translator** and keep one hand in frame—predictions appear with confidence.
             """
         )
+
 
