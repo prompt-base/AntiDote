@@ -21,15 +21,15 @@ def _rerun():
         st.experimental_rerun()
 
 # ===== Optional deps (we show install hints if missing) =====
-MISSING = []
+MISSING: List[str] = []
 try:
-    import mediapipe as mp
+    import mediapipe as mp  # type: ignore
 except Exception:
     mp = None
     MISSING.append("mediapipe")
 
 try:
-    import cv2
+    import cv2  # type: ignore
     cv2.setUseOptimized(True)
     try:
         cv2.setNumThreads(2)
@@ -40,13 +40,13 @@ except Exception:
     MISSING.append("opencv-python")
 
 try:
-    from sklearn.neighbors import KNeighborsClassifier
+    from sklearn.neighbors import KNeighborsClassifier  # type: ignore
 except Exception:
     KNeighborsClassifier = None
     MISSING.append("scikit-learn")
 
 try:
-    from streamlit_webrtc import webrtc_streamer, WebRtcMode, RTCConfiguration
+    from streamlit_webrtc import webrtc_streamer, WebRtcMode, RTCConfiguration  # type: ignore
     WEBRTC_OK = True
 except Exception:
     WEBRTC_OK = False
@@ -55,7 +55,7 @@ except Exception:
 # 1) PATHS / ASSETS
 # --------------------------------------------------
 REPO_ROOT = Path(__file__).resolve().parents[1]  # .../ANTIDOTE
-SIGNALINK_ASSETS = (REPO_ROOT / "signalink_assets")
+SIGNALINK_ASSETS = REPO_ROOT / "signalink_assets"
 IMAGES_DIR = SIGNALINK_ASSETS / "images"
 SIGNALINK_ASSETS.mkdir(parents=True, exist_ok=True)
 IMAGES_DIR.mkdir(parents=True, exist_ok=True)
@@ -65,13 +65,48 @@ MODEL_STATE_KEY = "signalink_knn_model"
 
 # Demo dataset (expand with your own images in signalink_assets/images)
 SIGN_DATA = [
-    {"word": "Hello",     "category": "Basic",  "image": str(IMAGES_DIR / "hello.png"),     "hint": "Hand up, small wave."},
-    {"word": "Thank you", "category": "Basic",  "image": str(IMAGES_DIR / "thankyou.png"),  "hint": "From chin outward."},
-    {"word": "Sorry",     "category": "Basic",  "image": str(IMAGES_DIR / "sorry.png"),     "hint": "Closed fist over chest."},
-    {"word": "Eat",       "category": "Daily",  "image": str(IMAGES_DIR / "eat.png"),       "hint": "Fingers to mouth."},
-    {"word": "Help",      "category": "Daily",  "image": str(IMAGES_DIR / "help.png"),      "hint": "Thumb-up on palm."},
-    {"word": "Mother",    "category": "People", "image": str(IMAGES_DIR / "mother.png"),    "hint": "Thumb to chin."},
-    {"word": "Father",    "category": "People", "image": str(IMAGES_DIR / "father.png"),    "hint": "Thumb to forehead."},
+    {
+        "word": "Hello",
+        "category": "Basic",
+        "image": str(IMAGES_DIR / "hello.png"),
+        "hint": "Hand up, small wave.",
+    },
+    {
+        "word": "Thank you",
+        "category": "Basic",
+        "image": str(IMAGES_DIR / "thankyou.png"),
+        "hint": "From chin outward.",
+    },
+    {
+        "word": "Sorry",
+        "category": "Basic",
+        "image": str(IMAGES_DIR / "sorry.png"),
+        "hint": "Closed fist over chest.",
+    },
+    {
+        "word": "Eat",
+        "category": "Daily",
+        "image": str(IMAGES_DIR / "eat.png"),
+        "hint": "Fingers to mouth.",
+    },
+    {
+        "word": "Help",
+        "category": "Daily",
+        "image": str(IMAGES_DIR / "help.png"),
+        "hint": "Thumb-up on palm.",
+    },
+    {
+        "word": "Mother",
+        "category": "People",
+        "image": str(IMAGES_DIR / "mother.png"),
+        "hint": "Thumb to chin.",
+    },
+    {
+        "word": "Father",
+        "category": "People",
+        "image": str(IMAGES_DIR / "father.png"),
+        "hint": "Thumb to forehead.",
+    },
 ]
 CATEGORIES = sorted(list({s["category"] for s in SIGN_DATA}))
 LABELS = [s["word"] for s in SIGN_DATA]
@@ -113,50 +148,60 @@ st.markdown(
       background: linear-gradient(135deg, #60a5fa 0%, #7c3aed 55%, #f472b6 110%);
       box-shadow: 0 18px 44px rgba(124,58,237,0.45);
     }
-    .cta .stButton>button:hover { transform: translateY(-2px); filter: brightness(1.04) saturate(1.03); }
-    .cta .stButton>button:active { transform: translateY(0); filter: brightness(0.98); }
+    .cta .stButton>button:hover {
+      transform: translateY(-2px);
+      filter: brightness(1.04) saturate(1.03);
+    }
+    .cta .stButton>button:active {
+      transform: translateY(0);
+      filter: brightness(0.98);
+    }
 
     .sign-card {
       background: rgba(3,16,22,.45);
       border: 1px solid rgba(255,255,255,.08);
-      border-radius: 16px; padding: 12px 14px; margin-bottom: 12px;
+      border-radius: 16px;
+      padding: 12px 14px;
+      margin-bottom: 12px;
       box-shadow: 0 10px 30px rgba(0,0,0,.25);
     }
     .cat-pill {
-      display:inline-block; background: rgba(99,102,241,0.12);
-      border: 1px solid rgba(99,102,241,0.25); padding: 7px 14px; border-radius: 999px;
-      font-size: 14px; margin-right: 8px; margin-bottom: 8px; user-select:none;
+      display:inline-block;
+      background: rgba(99,102,241,0.12);
+      border: 1px solid rgba(99,102,241,0.25);
+      padding: 7px 14px;
+      border-radius: 999px;
+      font-size: 14px;
+      margin-right: 8px;
+      margin-bottom: 8px;
+      user-select:none;
     }
     .cat-pill.active {
       background: linear-gradient(120deg,#6366f1,#38bdf8);
-      color:#061018; border-color: transparent; font-weight: 800;
+      color:#061018;
+      border-color: transparent;
+      font-weight: 800;
     }
 
-    /* ===== Tabs text color tweaks ===== */
-    /* All tab labels (active + inactive) */
+    /* Tabs text color tweaks */
     div.stTabs [data-baseweb="tab"] {
       color: #ffffff !important;
       font-weight: 500;
     }
-
-    /* Active tab label accent */
     div.stTabs [data-baseweb="tab"][aria-selected="true"] {
       color: #ff4b4b !important;
     }
 
-    /* Button text color overrides (be careful: may change with Streamlit versions) */
+    /* Button text color overrides (these selectors may change with Streamlit updates) */
     .st-emotion-cache-12j140x.et2rgd20 p{
       color:#0b1220;
     }
-
     .st-emotion-cache-12j140x.et2rgd20:hover p{
       color:#ffffff;
     }
-
     .st-emotion-cache-1s2v671.e1gk92lc0 p{
       color:#ffffff;
     }
-
     </style>
     """,
     unsafe_allow_html=True,
@@ -199,9 +244,9 @@ def _require(pkgs: List[str]) -> bool:
     missing = [p for p in pkgs if p in MISSING]
     if missing:
         st.error(
-            "Missing dependencies:\n\n```\n" +
-            "\n".join(f"pip install {p}" for p in missing) +
-            "\n```",
+            "Missing dependencies:\n\n```\n"
+            + "\n".join(f"pip install {p}" for p in missing)
+            + "\n```",
             icon="⚠️",
         )
         return False
@@ -216,9 +261,10 @@ def _img_to_rgb_ndarray(file_or_nd: Image.Image | np.ndarray) -> np.ndarray:
 
 class _HandsSingleton:
     """Reuse MediaPipe Hands across frames to avoid reinit cost."""
+
     def __init__(self):
         self.hands = None
-        self.last_init = 0
+        self.last_init = 0.0
         self.drawing = None
         self.mp = None
 
@@ -227,6 +273,7 @@ class _HandsSingleton:
             return None, None, None
         if self.hands is None or (time.time() - self.last_init) > 600:
             import mediapipe as _mp
+
             self.mp = _mp
             self.hands = _mp.solutions.hands.Hands(
                 model_complexity=0,
@@ -259,7 +306,7 @@ def extract_hand_vector_snapshot(img: Image.Image | np.ndarray) -> Tuple[Optiona
     if not res.multi_hand_landmarks:
         return None, None
     lms = res.multi_hand_landmarks[0]
-    handed = None
+    handed: Optional[str] = None
     if res.multi_handedness:
         handed = res.multi_handedness[0].classification[0].label
     vec = vector_from_landmarks(lms, handed)
@@ -278,12 +325,12 @@ def train_classifier(db: Dict[str, List[List[float]]]):
             y.append(label)
     if len(X) < 2:
         return None, []
-    X = np.array(X, dtype=np.float32)
-    y = np.array(y, dtype=object)
-    k = min(5, len(X))
+    X_arr = np.array(X, dtype=np.float32)
+    y_arr = np.array(y, dtype=object)
+    k = min(5, len(X_arr))
     clf = KNeighborsClassifier(n_neighbors=k, weights="distance", metric="euclidean")
-    clf.fit(X, y)
-    return clf, sorted(list(set(y.tolist())))
+    clf.fit(X_arr, y_arr)
+    return clf, sorted(list(set(y_arr.tolist())))
 
 def predict_vector(vec: np.ndarray):
     state = st.session_state[MODEL_STATE_KEY]
@@ -306,7 +353,6 @@ def _webrtc_mode_any():
 # --------------------------------------------------
 # 7) LANDING (two centered big buttons)
 # --------------------------------------------------
-# Decide which route we are currently in
 current_route = st.session_state.get("signalink_route", None)
 
 # If we have not started yet, or route is invalid, show the landing dashboard
@@ -349,30 +395,31 @@ if not st.session_state["signalink_started"] or current_route not in ("learn", "
 route = st.session_state.get("signalink_route", "learn")
 
 # --------------------------------------------------
-# 8) BACK TO DASHBOARD + TITLE
-# --------------------------------------------------
-# --------------------------------------------------
-# --------------------------------------------------
 # 8) TITLE + BACK TO DASHBOARD (RIGHT ALIGNED, WIDE)
 # --------------------------------------------------
-title_col, back_col = st.columns([5, 2])  # give more width to the button column
+title_col, back_col = st.columns([5, 2])
 
 with title_col:
     st.title("🤟 SIGNALINK")
 
 with back_col:
     st.markdown("<div style='height: 0.8rem'></div>", unsafe_allow_html=True)
-    if st.button("⬅️ Back to Dashboard", key="btn_back_dashboard", use_container_width=True):
-        # Reset route and show landing on next run
+    back_clicked = st.button(
+        "⬅️ Back to Dashboard",
+        key="btn_back_dashboard",
+        use_container_width=True,
+    )
+    if back_clicked:
         st.session_state["signalink_started"] = False
         st.session_state["signalink_route"] = None
         _rerun()
 
-
 # -------------- LEARN ROUTE --------------
 if route == "learn":
     # Tabs: Learn Signs | Practice | Progress
-    tab_learn, tab_practice, tab_progress = st.tabs(["📚 Learn Signs", "🧪 Practice", "📊 Progress"])
+    tab_learn, tab_practice, tab_progress = st.tabs(
+        ["📚 Learn Signs", "🧪 Practice", "📊 Progress"]
+    )
 
     # LEARN SIGNS
     with tab_learn:
@@ -381,22 +428,31 @@ if route == "learn":
         st.write("**Categories**")
         all_cats = ["All"] + CATEGORIES
         pill_cols = st.columns(len(all_cats))
+
         for i, cat_name in enumerate(all_cats):
             active = "active" if st.session_state.get("signalink_cat", "All") == cat_name else ""
             if pill_cols[i].button(cat_name, key=f"pill_{cat_name}"):
                 st.session_state["signalink_cat"] = cat_name
                 _rerun()
-            pill_cols[i].markdown(f"<span class='cat-pill {active}'>{cat_name}</span>", unsafe_allow_html=True)
+            pill_cols[i].markdown(
+                f"<span class='cat-pill {active}'>{cat_name}</span>",
+                unsafe_allow_html=True,
+            )
 
-       cat = st.session_state.get("signalink_cat", "All")
-        filtered = SIGN_DATA if cat == "All" else [s for s in SIGN_DATA if s["category"] == cat]
+        cat = st.session_state.get("signalink_cat", "All")
+        filtered = (
+            SIGN_DATA
+            if cat == "All"
+            else [s for s in SIGN_DATA if s["category"] == cat]
+        )
         cols = st.columns(3)
         for i, sign in enumerate(filtered):
             with cols[i % 3]:
                 st.markdown("<div class='sign-card'>", unsafe_allow_html=True)
                 img_path = sign["image"]
                 st.image(
-                    img_path if (img_path and os.path.exists(img_path))
+                    img_path
+                    if (img_path and os.path.exists(img_path))
                     else "https://via.placeholder.com/300x180?text=SIGN",
                     use_container_width=True,
                 )
@@ -418,10 +474,13 @@ if route == "learn":
             st.session_state.practice_idx = 0
             st.session_state.practice_order = list(range(len(SIGN_DATA)))
 
-        idx = st.session_state.practice_order[st.session_state.practice_idx % len(SIGN_DATA)]
+        idx = st.session_state.practice_order[
+            st.session_state.practice_idx % len(SIGN_DATA)
+        ]
         item = SIGN_DATA[idx]
         st.image(
-            item["image"] if os.path.exists(item["image"])
+            item["image"]
+            if os.path.exists(item["image"])
             else "https://via.placeholder.com/420x240?text=SIGN",
             use_container_width=False,
         )
@@ -430,10 +489,14 @@ if route == "learn":
         if col_a.button("Check"):
             if ans.strip().lower() == item["word"].lower():
                 st.success("✅ Correct!")
-                st.session_state["learn_progress"]["quiz_scores"].append({"word": item["word"], "correct": True})
+                st.session_state["learn_progress"]["quiz_scores"].append(
+                    {"word": item["word"], "correct": True}
+                )
             else:
                 st.error(f"❌ Incorrect. It was **{item['word']}**")
-                st.session_state["learn_progress"]["quiz_scores"].append({"word": item["word"], "correct": False})
+                st.session_state["learn_progress"]["quiz_scores"].append(
+                    {"word": item["word"], "correct": False}
+                )
         if col_b.button("Next"):
             st.session_state.practice_idx += 1
             _rerun()
@@ -458,15 +521,22 @@ if route == "learn":
 # -------------- TRANSLATOR ROUTE --------------
 else:
     # Tabs: Live Translator | Samples & Train | Help
-    tab_live, tab_samples, tab_help = st.tabs(["✋ Live Translator", "📸 Samples & Train", "ℹ️ Help"])
+    tab_live, tab_samples, tab_help = st.tabs(
+        ["✋ Live Translator", "📸 Samples & Train", "ℹ️ Help"]
+    )
 
     # LIVE TRANSLATOR
     with tab_live:
         st.subheader("✋ Live Sign → Text")
-        st.caption("Predicts one of your trained labels. Collect samples & train first if needed.")
+        st.caption(
+            "Predicts one of your trained labels. Collect samples & train first if needed."
+        )
         state = st.session_state[MODEL_STATE_KEY]
         if state["clf"] is None:
-            st.warning("No trained model yet. Add samples and train in **📸 Samples & Train**.", icon="⚠️")
+            st.warning(
+                "No trained model yet. Add samples and train in **📸 Samples & Train**.",
+                icon="⚠️",
+            )
         else:
             FRAME_SKIP = 3       # process 1 of every N frames
             INFER_W = 320
@@ -478,10 +548,16 @@ else:
                     return img_bgr
                 sc = target_w / float(w)
                 nh = int(h * sc)
-                return cv2.resize(img_bgr, (target_w, nh), interpolation=cv2.INTER_AREA)
+                return cv2.resize(
+                    img_bgr,
+                    (target_w, nh),
+                    interpolation=cv2.INTER_AREA,
+                )
 
             if WEBRTC_OK and _require(["mediapipe", "opencv-python"]):
-                rtc_config = RTCConfiguration({"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]})
+                rtc_config = RTCConfiguration(
+                    {"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]}
+                )
 
                 def video_frame_callback(frame):
                     _last["n"] += 1
@@ -504,14 +580,27 @@ else:
                         lms = res.multi_hand_landmarks[0]
                         handed = None
                         if res.multi_handedness:
-                            handed = res.multi_handedness[0].classification[0].label
+                            handed = (
+                                res.multi_handedness[0]
+                                .classification[0]
+                                .label
+                            )
 
                         # Draw occasionally (cheaper)
                         if ((_last["n"] // FRAME_SKIP) % 2) == 0:
                             drawing.draw_landmarks(
-                                small, lms, mp_mod.solutions.hands.HAND_CONNECTIONS,
-                                drawing.DrawingSpec(color=(0,255,255), thickness=2, circle_radius=2),
-                                drawing.DrawingSpec(color=(255,0,255), thickness=2)
+                                small,
+                                lms,
+                                mp_mod.solutions.hands.HAND_CONNECTIONS,
+                                drawing.DrawingSpec(
+                                    color=(0, 255, 255),
+                                    thickness=2,
+                                    circle_radius=2,
+                                ),
+                                drawing.DrawingSpec(
+                                    color=(255, 0, 255),
+                                    thickness=2,
+                                ),
                             )
 
                         vec = vector_from_landmarks(lms, handed)
@@ -520,11 +609,31 @@ else:
                             pred_text = label
                             conf_text = f"{(prob or 0.0)*100:.1f}%"
 
-                    out = cv2.resize(small, (img_bgr.shape[1], img_bgr.shape[0]), interpolation=cv2.INTER_LINEAR)
+                    out = cv2.resize(
+                        small,
+                        (img_bgr.shape[1], img_bgr.shape[0]),
+                        interpolation=cv2.INTER_LINEAR,
+                    )
                     cv2.rectangle(out, (10, 10), (380, 70), (0, 0, 0), -1)
-                    cv2.putText(out, f"Pred: {pred_text}", (20, 45), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (255,255,255), 2)
+                    cv2.putText(
+                        out,
+                        f"Pred: {pred_text}",
+                        (20, 45),
+                        cv2.FONT_HERSHEY_SIMPLEX,
+                        0.9,
+                        (255, 255, 255),
+                        2,
+                    )
                     if conf_text:
-                        cv2.putText(out, conf_text, (260, 45), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0,255,0), 2)
+                        cv2.putText(
+                            out,
+                            conf_text,
+                            (260, 45),
+                            cv2.FONT_HERSHEY_SIMPLEX,
+                            0.9,
+                            (0, 255, 0),
+                            2,
+                        )
                     return out
 
                 webrtc_streamer(
@@ -532,20 +641,29 @@ else:
                     mode=_webrtc_mode_any(),  # LIVE if available; else SENDRECV
                     rtc_configuration=rtc_config,
                     media_stream_constraints={
-                        "video": {"width": {"ideal": 320}, "height": {"ideal": 240}, "frameRate": {"ideal": 12, "max": 12}},
-                        "audio": False
+                        "video": {
+                            "width": {"ideal": 320},
+                            "height": {"ideal": 240},
+                            "frameRate": {"ideal": 12, "max": 12},
+                        },
+                        "audio": False,
                     },
                     video_frame_callback=video_frame_callback,
                     async_processing=True,
                 )
             else:
-                st.info("WebRTC not available; using **Snapshot Mode**.", icon="ℹ️")
+                st.info(
+                    "WebRTC not available; using **Snapshot Mode**.",
+                    icon="ℹ️",
+                )
                 snap = st.camera_input("Take a snapshot for prediction")
                 if snap is not None:
                     img = Image.open(snap)
                     vec, _ = extract_hand_vector_snapshot(img)
                     if vec is None:
-                        st.error("No hand detected. Try again with better lighting and one hand in frame.")
+                        st.error(
+                            "No hand detected. Try again with better lighting and one hand in frame."
+                        )
                     else:
                         label, prob = predict_vector(vec)
                         if label is None:
@@ -553,15 +671,24 @@ else:
                         else:
                             st.success(
                                 f"Prediction: **{label}**"
-                                + (f"  ({prob*100:.1f}% conf.)" if prob else "")
+                                + (
+                                    f"  ({prob*100:.1f}% conf.)"
+                                    if prob
+                                    else ""
+                                )
                             )
 
     # SAMPLES & TRAIN
     with tab_samples:
         st.subheader("📸 Samples & Train")
-        st.caption("Capture labeled samples via webcam, then train the on-device classifier.")
+        st.caption(
+            "Capture labeled samples via webcam, then train the on-device classifier."
+        )
         if not _require(["mediapipe", "opencv-python", "scikit-learn"]):
-            st.info("Install missing packages shown above, then reload.", icon="ℹ️")
+            st.info(
+                "Install missing packages shown above, then reload.",
+                icon="ℹ️",
+            )
         else:
             db = load_db()
             with st.expander("Current dataset summary", expanded=True):
@@ -587,11 +714,16 @@ else:
                     img = Image.open(snap)
                     vec, _ = extract_hand_vector_snapshot(img)
                     if vec is None:
-                        st.error("No hand detected. Try better lighting and one hand in frame.")
+                        st.error(
+                            "No hand detected. Try better lighting and one hand in frame."
+                        )
                     else:
                         db.setdefault(label, []).append(vec.tolist())
                         save_db(db)
-                        st.success(f"Added 1 sample to **{label}**. Total for {label}: {len(db[label])}")
+                        st.success(
+                            f"Added 1 sample to **{label}**. "
+                            f"Total for {label}: {len(db[label])}"
+                        )
 
             if clear_ok:
                 if label in db:
@@ -601,11 +733,19 @@ else:
 
             if train_ok:
                 clf, class_labels = train_classifier(db)
-                st.session_state[MODEL_STATE_KEY] = {"clf": clf, "labels": class_labels}
+                st.session_state[MODEL_STATE_KEY] = {
+                    "clf": clf,
+                    "labels": class_labels,
+                }
                 if clf is None:
-                    st.error("Need at least 2 samples total (ideally ≥10 per label) to train.")
+                    st.error(
+                        "Need at least 2 samples total "
+                        "(ideally ≥10 per label) to train."
+                    )
                 else:
-                    st.success(f"Model trained on classes: {', '.join(class_labels)}")
+                    st.success(
+                        f"Model trained on classes: {', '.join(class_labels)}"
+                    )
 
     # HELP
     with tab_help:
@@ -623,6 +763,3 @@ else:
             3. Open **✋ Live Translator** and keep one hand in frame—predictions appear with confidence.
             """
         )
-
-
-
