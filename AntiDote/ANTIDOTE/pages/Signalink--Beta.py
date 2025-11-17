@@ -214,6 +214,26 @@ st.markdown(
       border-radius: 12px;
       padding: 6px;
     }
+    /* NEXT button style on Practice tab */
+    .next-btn .stButton>button {
+      background: linear-gradient(135deg, #f59e0b, #ec4899);
+      color: #0b1220;
+      font-weight: 700;
+      border-radius: 999px;
+      padding: 0.5rem 1.6rem;
+      border: none;
+      box-shadow: 0 10px 25px rgba(236,72,153,0.45);
+    }
+
+    .next-btn .stButton>button:hover {
+      transform: translateY(-1px);
+      filter: brightness(1.05);
+    }
+
+    .next-btn .stButton>button:active {
+      transform: translateY(0);
+      filter: brightness(0.98);
+    }
 
 
     /* Tabs text color tweaks */
@@ -526,9 +546,10 @@ if route == "learn":
             "practice_options" not in st.session_state
             or st.session_state.practice_options.get("target") != item["word"]
         ):
-            # Build 1 correct + 3 random wrong options
+            # Build 1 correct + 2 random wrong options -> total 3
             other_words = [w for w in LABELS if w != item["word"]]
-            wrong = random.sample(other_words, k=min(3, len(other_words)))
+            num_wrong = min(2, len(other_words))
+            wrong = random.sample(other_words, k=num_wrong)
             options = wrong + [item["word"]]
             random.shuffle(options)
             st.session_state.practice_options = {
@@ -541,10 +562,10 @@ if route == "learn":
 
         st.write("Choose the correct word:")
 
-        # Render options as buttons (2 columns)
-        opt_cols = st.columns(2)
+        # Render options as buttons (3 in one row)
+        opt_cols = st.columns(3)
         for i, opt in enumerate(options):
-            with opt_cols[i % 2]:
+            with opt_cols[i]:
                 if st.button(
                     opt,
                     key=f"practice_opt_{st.session_state.practice_idx}_{i}",
@@ -566,11 +587,18 @@ if route == "learn":
             else:
                 st.error(f"❌ Incorrect. It was **{item['word']}**")
 
-        # Next button
-        if st.button(
-            "Next",
-            key=f"practice_next_{st.session_state.practice_idx}",
-        ):
+        # Centered NEXT button with custom color
+        spacer_l, center_next, spacer_r = st.columns([4, 1, 4])
+        with center_next:
+            st.markdown("<div class='next-btn'>", unsafe_allow_html=True)
+            next_clicked = st.button(
+                "Next",
+                key=f"practice_next_{st.session_state.practice_idx}",
+                use_container_width=True,
+            )
+            st.markdown("</div>", unsafe_allow_html=True)
+
+        if next_clicked:
             st.session_state.practice_idx += 1
             st.session_state.pop("practice_options", None)
             st.session_state.pop("practice_feedback", None)
@@ -838,6 +866,7 @@ else:
             3. Open **✋ Live Translator** and keep one hand in frame—predictions appear with confidence.
             """
         )
+
 
 
 
