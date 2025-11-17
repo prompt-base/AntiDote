@@ -202,6 +202,16 @@ st.markdown(
       margin-bottom: 12px;
       box-shadow: 0 10px 30px rgba(0,0,0,.25);
     }
+        /* Make all sign images uniform */
+    .sign-card img {
+      width: 100% !important;
+      height: 190px !important;       /* adjust 170–220 if you want taller/shorter */
+      object-fit: contain;            /* keep full hand visible */
+      background: rgba(6,16,24,0.9);  /* dark background behind transparent PNGs */
+      border-radius: 12px;
+      padding: 6px;
+    }
+
 
     /* Tabs text color tweaks */
     div.stTabs [data-baseweb="tab"] {
@@ -781,5 +791,6 @@ else:
             3. Open **✋ Live Translator** and keep one hand in frame—predictions appear with confidence.
             """
         )
+
 
 
