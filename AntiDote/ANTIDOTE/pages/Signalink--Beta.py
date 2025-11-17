@@ -351,16 +351,23 @@ route = st.session_state.get("signalink_route", "learn")
 # --------------------------------------------------
 # 8) BACK TO DASHBOARD + TITLE
 # --------------------------------------------------
-back_col, title_col = st.columns([1, 6])
+# --------------------------------------------------
+# 8) TITLE + BACK TO DASHBOARD (RIGHT ALIGNED)
+# --------------------------------------------------
+title_col, back_col = st.columns([6, 1])
+
+with title_col:
+    st.title("🤟 SIGNALINK")
+
 with back_col:
+    # Small top padding so button aligns nicely with the title
+    st.markdown("<div style='height: 0.8rem'></div>", unsafe_allow_html=True)
     if st.button("⬅️ Back to Dashboard", key="btn_back_dashboard"):
         # Reset route and show landing on next run
         st.session_state["signalink_started"] = False
         st.session_state["signalink_route"] = None
         _rerun()
 
-with title_col:
-    st.title("🤟 SIGNALINK")
 
 # -------------- LEARN ROUTE --------------
 if route == "learn":
@@ -618,3 +625,4 @@ else:
             3. Open **✋ Live Translator** and keep one hand in frame—predictions appear with confidence.
             """
         )
+
