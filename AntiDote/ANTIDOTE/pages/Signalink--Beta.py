@@ -352,17 +352,17 @@ route = st.session_state.get("signalink_route", "learn")
 # 8) BACK TO DASHBOARD + TITLE
 # --------------------------------------------------
 # --------------------------------------------------
-# 8) TITLE + BACK TO DASHBOARD (RIGHT ALIGNED)
 # --------------------------------------------------
-title_col, back_col = st.columns([6, 1])
+# 8) TITLE + BACK TO DASHBOARD (RIGHT ALIGNED, WIDE)
+# --------------------------------------------------
+title_col, back_col = st.columns([5, 2])  # give more width to the button column
 
 with title_col:
     st.title("🤟 SIGNALINK")
 
 with back_col:
-    # Small top padding so button aligns nicely with the title
     st.markdown("<div style='height: 0.8rem'></div>", unsafe_allow_html=True)
-    if st.button("⬅️ Back to Dashboard", key="btn_back_dashboard"):
+    if st.button("⬅️ Back to Dashboard", key="btn_back_dashboard", use_container_width=True):
         # Reset route and show landing on next run
         st.session_state["signalink_started"] = False
         st.session_state["signalink_route"] = None
@@ -388,7 +388,7 @@ if route == "learn":
                 _rerun()
             pill_cols[i].markdown(f"<span class='cat-pill {active}'>{cat_name}</span>", unsafe_allow_html=True)
 
-        st.selectbox("Choose a category", all_cats, key="signalink_cat")
+        # --st.selectbox("Choose a category", all_cats, key="signalink_cat")--#
 
         cat = st.session_state.get("signalink_cat", "All")
         filtered = SIGN_DATA if cat == "All" else [s for s in SIGN_DATA if s["category"] == cat]
@@ -625,4 +625,5 @@ else:
             3. Open **✋ Live Translator** and keep one hand in frame—predictions appear with confidence.
             """
         )
+
 
