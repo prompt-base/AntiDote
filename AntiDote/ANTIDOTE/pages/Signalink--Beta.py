@@ -5,6 +5,7 @@
 import os
 import json
 import time
+import random
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -495,38 +496,84 @@ if route == "learn":
                     st.success(f"Marked {sign['word']} as learned ✅")
 
     # PRACTICE
+    # PRACTICE
     with tab_practice:
         st.subheader("🧪 Practice")
-        st.caption("We’ll show a sign image—type the correct word.")
+        st.caption("Tap the correct word for this sign.")
+
+        # Initial state for practice flow
         if "practice_idx" not in st.session_state:
             st.session_state.practice_idx = 0
             st.session_state.practice_order = list(range(len(SIGN_DATA)))
+            st.session_state.pop("practice_options", None)
+            st.session_state.pop("practice_feedback", None)
 
         idx = st.session_state.practice_order[
             st.session_state.practice_idx % len(SIGN_DATA)
         ]
         item = SIGN_DATA[idx]
+
+        # Show the sign image
         st.image(
             item["image"]
             if os.path.exists(item["image"])
             else "https://via.placeholder.com/420x240?text=SIGN",
             use_container_width=False,
         )
-        ans = st.text_input("Your answer (word):", key="practice_answer")
-        col_a, col_b = st.columns(2)
-        if col_a.button("Check"):
-            if ans.strip().lower() == item["word"].lower():
+
+        # Prepare / reuse options for this question
+        if (
+            "practice_options" not in st.session_state
+            or st.session_state.practice_options.get("target") != item["word"]
+        ):
+            # Build 1 correct + 3 random wrong options
+            other_words = [w for w in LABELS if w != item["word"]]
+            wrong = random.sample(other_words, k=min(3, len(other_words)))
+            options = wrong + [item["word"]]
+            random.shuffle(options)
+            st.session_state.practice_options = {
+                "target": item["word"],
+                "options": options,
+            }
+            st.session_state.pop("practice_feedback", None)
+
+        options = st.session_state.practice_options["options"]
+
+        st.write("Choose the correct word:")
+
+        # Render options as buttons (2 columns)
+        opt_cols = st.columns(2)
+        for i, opt in enumerate(options):
+            with opt_cols[i % 2]:
+                if st.button(
+                    opt,
+                    key=f"practice_opt_{st.session_state.practice_idx}_{i}",
+                ):
+                    is_correct = (opt == item["word"])
+                    st.session_state["practice_feedback"] = {
+                        "word": item["word"],
+                        "correct": is_correct,
+                    }
+                    st.session_state["learn_progress"]["quiz_scores"].append(
+                        {"word": item["word"], "correct": is_correct}
+                    )
+
+        # Show feedback if available for this question
+        fb = st.session_state.get("practice_feedback")
+        if fb and fb.get("word") == item["word"]:
+            if fb["correct"]:
                 st.success("✅ Correct!")
-                st.session_state["learn_progress"]["quiz_scores"].append(
-                    {"word": item["word"], "correct": True}
-                )
             else:
                 st.error(f"❌ Incorrect. It was **{item['word']}**")
-                st.session_state["learn_progress"]["quiz_scores"].append(
-                    {"word": item["word"], "correct": False}
-                )
-        if col_b.button("Next"):
+
+        # Next button
+        if st.button(
+            "Next",
+            key=f"practice_next_{st.session_state.practice_idx}",
+        ):
             st.session_state.practice_idx += 1
+            st.session_state.pop("practice_options", None)
+            st.session_state.pop("practice_feedback", None)
             _rerun()
 
     # PROGRESS
@@ -791,6 +838,7 @@ else:
             3. Open **✋ Live Translator** and keep one hand in frame—predictions appear with confidence.
             """
         )
+
 
 
 
