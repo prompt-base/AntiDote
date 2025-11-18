@@ -320,8 +320,10 @@ class _HandsSingleton:
         self.mp = None
 
     def get(self):
-        if not _require(["mediapipe"]):
+        # If mediapipe is not available in this environment, just disable hands.
+        if mp is None:
             return None, None, None
+
         if self.hands is None or (time.time() - self.last_init) > 600:
             import mediapipe as _mp
 
@@ -634,152 +636,141 @@ else:
         st.caption(
             "Predicts one of your trained labels. Collect samples & train first if needed."
         )
-        state = st.session_state[MODEL_STATE_KEY]
-        if state["clf"] is None:
-            st.warning(
-                "No trained model yet. Add samples and train in **📸 Samples & Train**.",
-                icon="⚠️",
+
+        # If mediapipe is not available (e.g., Python 3.13), disable this feature
+        if mp is None:
+            st.info(
+                "Live sign → text is not available on this server environment "
+                "(mediapipe does not support this Python version yet). "
+                "You can still use the Learn and Practice tabs.",
+                icon="ℹ️",
             )
         else:
-            FRAME_SKIP = 3       # process 1 of every N frames
-            INFER_W = 320
-            _last = {"n": 0}
-
-            def _resize_keep_aspect(img_bgr, target_w):
-                h, w = img_bgr.shape[:2]
-                if w <= target_w:
-                    return img_bgr
-                sc = target_w / float(w)
-                nh = int(h * sc)
-                return cv2.resize(
-                    img_bgr,
-                    (target_w, nh),
-                    interpolation=cv2.INTER_AREA,
-                )
-
-            if WEBRTC_OK and _require(["mediapipe", "opencv-python"]):
-                rtc_config = RTCConfiguration(
-                    {"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]}
-                )
-
-                def video_frame_callback(frame):
-                    _last["n"] += 1
-                    img_bgr = frame.to_ndarray(format="bgr24")
-
-                    if _last["n"] % FRAME_SKIP != 0:
-                        return img_bgr
-
-                    small = _resize_keep_aspect(img_bgr, INFER_W)
-                    small_rgb = cv2.cvtColor(small, cv2.COLOR_BGR2RGB)
-
-                    hands, drawing, mp_mod = _HANDS.get()
-                    if hands is None:
-                        return img_bgr
-
-                    res = hands.process(small_rgb)
-                    pred_text = "No hand"
-                    conf_text = ""
-                    if res and res.multi_hand_landmarks:
-                        lms = res.multi_hand_landmarks[0]
-                        handed = None
-                        if res.multi_handedness:
-                            handed = (
-                                res.multi_handedness[0]
-                                .classification[0]
-                                .label
-                            )
-
-                        # Draw occasionally (cheaper)
-                        if ((_last["n"] // FRAME_SKIP) % 2) == 0:
-                            drawing.draw_landmarks(
-                                small,
-                                lms,
-                                mp_mod.solutions.hands.HAND_CONNECTIONS,
-                                drawing.DrawingSpec(
-                                    color=(0, 255, 255),
-                                    thickness=2,
-                                    circle_radius=2,
-                                ),
-                                drawing.DrawingSpec(
-                                    color=(255, 0, 255),
-                                    thickness=2,
-                                ),
-                            )
-
-                        vec = vector_from_landmarks(lms, handed)
-                        label, prob = predict_vector(vec)
-                        if label is not None:
-                            pred_text = label
-                            conf_text = f"{(prob or 0.0)*100:.1f}%"
-
-                    out = cv2.resize(
-                        small,
-                        (img_bgr.shape[1], img_bgr.shape[0]),
-                        interpolation=cv2.INTER_LINEAR,
-                    )
-                    cv2.rectangle(out, (10, 10), (380, 70), (0, 0, 0), -1)
-                    cv2.putText(
-                        out,
-                        f"Pred: {pred_text}",
-                        (20, 45),
-                        cv2.FONT_HERSHEY_SIMPLEX,
-                        0.9,
-                        (255, 255, 255),
-                        2,
-                    )
-                    if conf_text:
-                        cv2.putText(
-                            out,
-                            conf_text,
-                            (260, 45),
-                            cv2.FONT_HERSHEY_SIMPLEX,
-                            0.9,
-                            (0, 255, 0),
-                            2,
-                        )
-                    return out
-
-                webrtc_streamer(
-                    key="signalink-live",
-                    mode=_webrtc_mode_any(),  # LIVE if available; else SENDRECV
-                    rtc_configuration=rtc_config,
-                    media_stream_constraints={
-                        "video": {
-                            "width": {"ideal": 320},
-                            "height": {"ideal": 240},
-                            "frameRate": {"ideal": 12, "max": 12},
-                        },
-                        "audio": False,
-                    },
-                    video_frame_callback=video_frame_callback,
-                    async_processing=True,
+            state = st.session_state[MODEL_STATE_KEY]
+            if state["clf"] is None:
+                st.warning(
+                    "No trained model yet. Add samples and train in **📸 Samples & Train**.",
+                    icon="⚠️",
                 )
             else:
-                st.info(
-                    "WebRTC not available; using **Snapshot Mode**.",
-                    icon="ℹ️",
-                )
-                snap = st.camera_input("Take a snapshot for prediction")
-                if snap is not None:
-                    img = Image.open(snap)
-                    vec, _ = extract_hand_vector_snapshot(img)
-                    if vec is None:
-                        st.error(
-                            "No hand detected. Try again with better lighting and one hand in frame."
-                        )
-                    else:
-                        label, prob = predict_vector(vec)
-                        if label is None:
-                            st.error("Model not ready or could not predict.")
-                        else:
-                            st.success(
-                                f"Prediction: **{label}**"
-                                + (
-                                    f"  ({prob*100:.1f}% conf.)"
-                                    if prob
-                                    else ""
+                FRAME_SKIP = 3       # process 1 of every N frames
+                INFER_W = 320
+                _last = {"n": 0}
+
+                def _resize_keep_aspect(img_bgr, target_w):
+                    h, w = img_bgr.shape[:2]
+                    if w <= target_w:
+                        return img_bgr
+                    sc = target_w / float(w)
+                    nh = int(h * sc)
+                    return cv2.resize(
+                        img_bgr,
+                        (target_w, nh),
+                        interpolation=cv2.INTER_AREA,
+                    )
+
+                if WEBRTC_OK and _require(["opencv-python"]):
+                    rtc_config = RTCConfiguration(
+                        {"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]}
+                    )
+
+                    def video_frame_callback(frame):
+                        _last["n"] += 1
+                        img_bgr = frame.to_ndarray(format="bgr24")
+
+                        if _last["n"] % FRAME_SKIP != 0:
+                            return img_bgr
+
+                        small = _resize_keep_aspect(img_bgr, INFER_W)
+                        small_rgb = cv2.cvtColor(small, cv2.COLOR_BGR2RGB)
+
+                        hands, drawing, mp_mod = _HANDS.get()
+                        if hands is None:
+                            return img_bgr
+
+                        res = hands.process(small_rgb)
+                        pred_text = "No hand"
+                        conf_text = ""
+                        if res and res.multi_hand_landmarks:
+                            lms = res.multi_hand_landmarks[0]
+                            handed = None
+                            if res.multi_handedness:
+                                handed = (
+                                    res.multi_handedness[0]
+                                    .classification[0]
+                                    .label
                                 )
+
+                            # Draw occasionally (cheaper)
+                            if ((_last["n"] // FRAME_SKIP) % 2) == 0:
+                                drawing.draw_landmarks(
+                                    small,
+                                    lms,
+                                    mp_mod.solutions.hands.HAND_CONNECTIONS,
+                                    drawing.DrawingSpec(
+                                        color=(0, 255, 255),
+                                        thickness=2,
+                                        circle_radius=2,
+                                    ),
+                                    drawing.DrawingSpec(
+                                        color=(255, 0, 255),
+                                        thickness=2,
+                                    ),
+                                )
+
+                            vec = vector_from_landmarks(lms, handed)
+                            label, prob = predict_vector(vec)
+                            if label is not None:
+                                pred_text = label
+                                conf_text = f"{(prob or 0.0)*100:.1f}%"
+
+                        out = cv2.resize(
+                            small,
+                            (img_bgr.shape[1], img_bgr.shape[0]),
+                            interpolation=cv2.INTER_LINEAR,
+                        )
+                        cv2.rectangle(out, (10, 10), (380, 70), (0, 0, 0), -1)
+                        cv2.putText(
+                            out,
+                            f"Pred: {pred_text}",
+                            (20, 45),
+                            cv2.FONT_HERSHEY_SIMPLEX,
+                            0.9,
+                            (255, 255, 255),
+                            2,
+                        )
+                        if conf_text:
+                            cv2.putText(
+                                out,
+                                conf_text,
+                                (260, 45),
+                                cv2.FONT_HERSHEY_SIMPLEX,
+                                0.9,
+                                (0, 255, 0),
+                                2,
                             )
+                        return out
+
+                    webrtc_streamer(
+                        key="signalink-live",
+                        mode=_webrtc_mode_any(),  # LIVE if available; else SENDRECV
+                        rtc_configuration=rtc_config,
+                        media_stream_constraints={
+                            "video": {
+                                "width": {"ideal": 320},
+                                "height": {"ideal": 240},
+                                "frameRate": {"ideal": 12, "max": 12},
+                            },
+                            "audio": False,
+                        },
+                        video_frame_callback=video_frame_callback,
+                        async_processing=True,
+                    )
+                else:
+                    st.info(
+                        "WebRTC is not available; snapshot prediction is also disabled on this server.",
+                        icon="ℹ️",
+                    )
 
     # SAMPLES & TRAIN
     with tab_samples:
@@ -787,7 +778,17 @@ else:
         st.caption(
             "Capture labeled samples via webcam, then train the on-device classifier."
         )
-        if not _require(["mediapipe", "opencv-python", "scikit-learn"]):
+
+        # If mediapipe is not available (e.g., Python 3.13 on Streamlit Cloud),
+        # disable this feature with a clear message.
+        if mp is None:
+            st.info(
+                "Camera-based training is not available on this server environment "
+                "(mediapipe does not support this Python version yet). "
+                "You can still use Learn and Practice tabs.",
+                icon="ℹ️",
+            )
+        elif not _require(["opencv-python", "scikit-learn"]):
             st.info(
                 "Install missing packages shown above, then reload.",
                 icon="ℹ️",
@@ -855,7 +856,7 @@ else:
         st.subheader("ℹ️ Help")
         st.markdown(
             """
-            **Install once:**
+            **For local development (Python ≤ 3.12):**
             ```
             pip install mediapipe opencv-python scikit-learn
             pip install streamlit-webrtc
@@ -863,6 +864,6 @@ else:
             **Workflow:**
             1. Go to **📸 Samples & Train**, pick a label (e.g., "Hello"), capture 10–30 snapshots, and **Train**.  
             2. Repeat for other labels (Thank you, Sorry, …).  
-            3. Open **✋ Live Translator** and keep one hand in frame—predictions appear with confidence.
+            3. Open **✋ Live Translator** and keep one hand in frame—predictions appear with confidence (on supported environments).
             """
         )
