@@ -172,33 +172,37 @@ with tab_daily:
     st.subheader("🕓 Voice-based Daily Routine")
     st.caption("Say: 'add reminder take medicine at 9pm' (browser mic must be allowed).")
 
-    # Mic button + status text (front-end only)
-    st.markdown(
+    # Mic button + status rendered via components.html to avoid script showing as text
+    components.html(
         """
         <div class="panel">
-          <button id="unsee-stt"
-                  style="padding:6px 14px;border:none;background:#0ea5e9;color:white;border-radius:8px;cursor:pointer;">
+          <button id="unseen-stt-btn"
+                  style="padding:6px 14px;border:none;background:#0ea5e9;color:white;
+                         border-radius:8px;cursor:pointer;">
             🎤 Speak command
           </button>
-          <span id="unsee-stt-status" style="margin-left:6px;font-size:12px;color:#fff;"></span>
+          <span id="unseen-stt-status"
+                style="margin-left:6px;font-size:12px;color:#fff;"></span>
         </div>
+
         <script>
-        (function(){
-          const btn  = document.getElementById("unsee-stt");
-          const stat = document.getElementById("unsee-stt-status");
-          if (!btn) return;
+        (function () {
+          const btn  = document.getElementById("unseen-stt-btn");
+          const stat = document.getElementById("unseen-stt-status");
+          if (!btn || !stat) return;
 
-          btn.addEventListener("click", function(){
-            const isLocal = (location.hostname === "localhost" || location.hostname === "127.0.0.1");
+          btn.addEventListener("click", function () {
+            const isLocal =
+              (location.hostname === "localhost" || location.hostname === "127.0.0.1");
 
-            // Security requirement: https or localhost
-            if (!window.isSecureContext && !isLocal){
+            // Security: mic needs HTTPS or localhost
+            if (!window.isSecureContext && !isLocal) {
               stat.innerText = "❌ Mic needs HTTPS or localhost.";
               return;
             }
 
             const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-            if (!SR){
+            if (!SR) {
               stat.innerText = "❌ SpeechRecognition not supported in this browser.";
               return;
             }
@@ -206,15 +210,15 @@ with tab_daily:
             const rec = new SR();
             rec.lang = "en-US";
 
-            rec.onstart = () => {
+            rec.onstart = function () {
               stat.innerText = "🎧 Listening...";
             };
 
-            rec.onerror = (e) => {
+            rec.onerror = function (e) {
               stat.innerText = "❌ " + (e.error || "error");
             };
 
-            rec.onresult = (e) => {
+            rec.onresult = function (e) {
               const text = e.results[0][0].transcript;
               stat.innerText = "Heard: " + text;
 
@@ -233,7 +237,7 @@ with tab_daily:
         })();
         </script>
         """,
-        unsafe_allow_html=True,
+        height=120,
     )
 
     # Read voice command from query param (if navigation succeeded)
@@ -241,7 +245,7 @@ with tab_daily:
     if isinstance(cmd, list):
         cmd = cmd[0]
 
-    # Also give a text fallback (works even if mic fails)
+    # Text fallback (works even if mic fails)
     typed_cmd = st.text_input("Or type your command here")
     run_cmd = st.button("Run typed command", key="run_typed_cmd")
 
@@ -249,8 +253,8 @@ with tab_daily:
     if "unseen_tasks" not in st.session_state:
         st.session_state["unseen_tasks"] = []
 
-    # Helper to process any command string
     def process_unseen_cmd(command: str):
+        """Process any command string for the Daily tab."""
         if not command:
             return
         txt = command.lower()
@@ -267,7 +271,7 @@ with tab_daily:
         else:
             st.info(f"Heard command: {command}")
 
-    # 1) Process voice command (if we arrived via ?cmd=...)
+    # 1) Process voice command (?cmd=...)
     if cmd:
         process_unseen_cmd(cmd)
 
@@ -400,4 +404,5 @@ with tab_about:
         Features: voice commands, daily reminders, text reader, navigation helper.
         """
     )
+
 
