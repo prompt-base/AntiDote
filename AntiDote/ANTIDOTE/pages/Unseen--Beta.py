@@ -1,15 +1,31 @@
-# ANTIDOTE/pages/Unseen-Beta.py
+# ANTIDOTE/pages/Unseen--Beta.py
 # --------------------------------------------------
 # UNSEEN – Voice-Driven Assistant for Low Vision
 # --------------------------------------------------
 import os
-from pathlib import Path
+import json
 import datetime
+from pathlib import Path
+
 import streamlit as st
 import streamlit.components.v1 as components
 
+# Small helper for rerun (new vs old Streamlit)
+def _rerun():
+    if hasattr(st, "rerun"):
+        st.rerun()
+    else:
+        st.experimental_rerun()
+
+# ---------- PATHS (for local hero GIF) ----------
+PROJECT_DIR = Path(__file__).resolve().parent      # .../ANTIDOTE/pages
+REPO_ROOT = PROJECT_DIR.parent                     # .../ANTIDOTE
+IMAGES_DIR = REPO_ROOT / "images"
+HERO_GIF = IMAGES_DIR / "unseen-hero.gif"          # <-- put your GIF here
+
 st.set_page_config(page_title="UNSEEN – Beta", page_icon="👁‍🗨", layout="wide")
 
+# ---------- GLOBAL STYLES ----------
 st.markdown(
     """
     <style>
@@ -18,6 +34,7 @@ st.markdown(
       color: #fff;
     }
     h1,h2,h3,h4 { color:#fff !important; }
+
     .big-btn {
       background: linear-gradient(120deg, #f97316 0%, #fb7185 80%);
       border:none;
@@ -28,7 +45,9 @@ st.markdown(
       font-weight:700;
       width:100%;
       box-shadow: 0 12px 25px rgba(251,113,133,0.35);
+      cursor:pointer;
     }
+
     .panel {
       background: rgba(15,23,42,0.35);
       border: 1px solid rgba(255,255,255,0.04);
@@ -37,70 +56,112 @@ st.markdown(
       margin-bottom: 12px;
     }
 
-
-    /* ===== Tabs text color tweaks ===== */
-    /* All tab labels (active + inactive) */
+    /* Tabs text color tweaks */
     div.stTabs [data-baseweb="tab"] {
-      color: #ffffff !important;           /* make inactive text white */
+      color: #ffffff !important;
       font-weight: 500;
     }
-
-    /* Active tab label accent */
     div.stTabs [data-baseweb="tab"][aria-selected="true"] {
       color: #ff4b4b !important;
-    #   border-bottom: 3px solid #22d3ee !important;
     }
 
-.stButton.st-emotion-cache-8atqhb.e1mlolmg0 button p{
-  color:#0b1220;
-}
+    /* Button text color overrides (these selectors change with Streamlit versions) */
+    .stButton.st-emotion-cache-8atqhb.e1mlolmg0 button p{
+      color:#0b1220;
+    }
+    .stButton.st-emotion-cache-8atqhb.e1mlolmg0 button:hover p{
+      color:#ffffff;
+    }
 
-.stButton.st-emotion-cache-8atqhb.e1mlolmg0 button:hover p{
-  color:#ffffff;
-}
+    .st-emotion-cache-79elbk.e1o1zy6o0 p,
+    .st-emotion-cache-0.e16n7gab17 p,
+    .st-emotion-cache-1sm2s1z.e1r0q00f0 p{
+      color:#ffffff;
+    }
 
-.st-emotion-cache-79elbk.e1o1zy6o0 p,
-.st-emotion-cache-0.e16n7gab17 p,
-.st-emotion-cache-1sm2s1z.e1r0q00f0 p{
-color:#ffffff;
-}
-
-
+    /* Back to Dashboard button */
+    .back-btn .stButton>button {
+      background: linear-gradient(120deg, #22c55e, #0ea5e9);
+      border:none;
+      color:#0b1220;
+      font-weight:700;
+      border-radius: 999px;
+      padding: 0.4rem 1.4rem;
+      box-shadow: 0 10px 22px rgba(14,165,233,0.45);
+    }
+    .back-btn .stButton>button:hover {
+      filter: brightness(1.05);
+      transform: translateY(-1px);
+    }
+    .back-btn .stButton>button:active {
+      transform: translateY(0);
+      filter: brightness(0.97);
+    }
     </style>
     """,
     unsafe_allow_html=True,
 )
 
-st.markdown("<h1>👁‍🗨 UNSEEN – Voice Assistant</h1>", unsafe_allow_html=True)
-st.caption("Seeing beyond sight. Voice-first helper inside ANTIDOTE.")
+# ---------- SESSION STATE ----------
+st.session_state.setdefault("unseen_started", False)
+st.session_state.setdefault("unseen_mode", None)          # "voice" | "text"
+st.session_state.setdefault("unseen_tasks", [])
 
-if "unseen_started" not in st.session_state:
-    st.session_state.unseen_started = False
+# ---------- LANDING (Mode selection) ----------
+if not st.session_state["unseen_started"]:
+    # Simple title for landing
+    st.markdown("<h1>👁‍🗨 UNSEEN – Voice Assistant</h1>", unsafe_allow_html=True)
+    st.caption("Seeing beyond sight. Voice-first helper inside ANTIDOTE.")
 
-# LANDING
-if not st.session_state.unseen_started:
     c1, c2 = st.columns([2, 1])
     with c1:
         st.write("Welcome to **UNSEEN** — your voice-powered daily assistant.")
         st.write("Choose how you want to interact:")
+
         if st.button("🎤 Voice Mode (recommended)", use_container_width=True, key="start_voice"):
-            st.session_state.unseen_started = True
-            st.session_state.unseen_mode = "voice"
-            st.rerun()
+            st.session_state["unseen_started"] = True
+            st.session_state["unseen_mode"] = "voice"
+            _rerun()
+
         if st.button("💬 Text Mode (low-vision)", use_container_width=True, key="start_text"):
-            st.session_state.unseen_started = True
-            st.session_state.unseen_mode = "text"
-            st.rerun()
+            st.session_state["unseen_started"] = True
+            st.session_state["unseen_mode"] = "text"
+            _rerun()
+
     with c2:
-        st.image(
-            "https://i.pinimg.com/originals/e9/f7/bf/e9f7bf6cd7b5f1f6b954ed7be35d8aac.gif",
-            use_container_width=True,
+        # Use local GIF if available, else fallback to Pinterest URL
+        hero_src = (
+            str(HERO_GIF)
+            if HERO_GIF.exists()
+            else "https://i.pinimg.com/originals/e9/f7/bf/e9f7bf6cd7b5f1f6b954ed7be35d8aac.gif"
         )
+        st.image(hero_src, use_container_width=True)
+
     st.stop()
 
+# ---------- AFTER MODE CHOSEN: HEADER + BACK BUTTON ----------
 mode = st.session_state.get("unseen_mode", "voice")
 
-# MAIN TABS
+title_col, back_col = st.columns([5, 2])
+with title_col:
+    st.markdown("<h1>👁‍🗨 UNSEEN – Voice Assistant</h1>", unsafe_allow_html=True)
+    if mode == "voice":
+        st.caption("Voice-first mode. Ideal for low-vision users with a screen-reader or helper.")
+    else:
+        st.caption("Text mode selected. You can type instead of speaking.")
+
+with back_col:
+    st.markdown("<div style='height:0.8rem;'></div>", unsafe_allow_html=True)
+    st.markdown("<div class='back-btn'>", unsafe_allow_html=True)
+    back_clicked = st.button("⬅️ Back to Dashboard", key="unseen_back", use_container_width=True)
+    st.markdown("</div>", unsafe_allow_html=True)
+
+    if back_clicked:
+        st.session_state["unseen_started"] = False
+        st.session_state["unseen_mode"] = None
+        _rerun()
+
+# ---------- MAIN TABS ----------
 tab_daily, tab_talk, tab_reader, tab_nav, tab_about = st.tabs(
     ["🕓 Daily", "🗣 Smart Talk", "📖 Text / Label Reader", "🧭 Navigation", "ℹ About"]
 )
@@ -110,7 +171,7 @@ with tab_daily:
     st.subheader("🕓 Voice-based Daily Routine")
     st.caption("Say: 'add reminder take medicine at 9pm' (browser mic must be allowed).")
 
-    # mic button
+    # Mic button + status
     st.markdown(
         """
         <div class="panel">
@@ -154,31 +215,30 @@ with tab_daily:
         unsafe_allow_html=True,
     )
 
+    # Read query param for voice command
     cmd = st.query_params.get("cmd")
     if isinstance(cmd, list):
         cmd = cmd[0]
 
-    if "unseen_tasks" not in st.session_state:
-        st.session_state.unseen_tasks = []
-
-    # very simple parser
+    # Very simple parser for commands
     if cmd:
         txt = cmd.lower()
         if "add reminder" in txt or "take" in txt:
-            st.session_state.unseen_tasks.append(
+            st.session_state["unseen_tasks"].append(
                 {"time": datetime.datetime.now().isoformat(timespec="seconds"), "text": cmd}
             )
             st.success(f"✅ Reminder added: {cmd}")
         elif "what's on my list" in txt or "list" in txt:
-            pass  # just show list below
+            # Just show the list below
+            st.info("Here is your reminder list below.")
         else:
             st.info(f"Heard command: {cmd}")
 
     st.write("**Your reminders:**")
-    if not st.session_state.unseen_tasks:
+    if not st.session_state["unseen_tasks"]:
         st.info("No reminders yet.")
     else:
-        for t in reversed(st.session_state.unseen_tasks):
+        for t in reversed(st.session_state["unseen_tasks"]):
             st.write(f"• {t['time']} — {t['text']}")
 
 # ---------------- TALK ----------------
@@ -199,7 +259,7 @@ with tab_talk:
             else:
                 ans = "I am UNSEEN, your voice helper inside ANTIDOTE."
             st.success(ans)
-            # speak
+            # speak via browser
             st.markdown(
                 f"""
                 <script>
@@ -218,17 +278,20 @@ with tab_talk:
 # ---------------- READER ----------------
 with tab_reader:
     st.subheader("📖 Text / Label Reader")
-    st.caption("Upload an image of medicine label, or paste text, and UNSEEN will read it aloud.")
+    st.caption("Upload an image of a medicine label, or paste text, and UNSEEN will read it aloud.")
+
     up = st.file_uploader("Upload image (demo only)", type=["png", "jpg", "jpeg"])
     txt = st.text_area("Paste text to read")
+
     if st.button("🔊 Read"):
         if txt.strip():
             readout = txt.strip()
         elif up:
-            # no real OCR here, but you can integrate pytesseract
+            # No real OCR yet – placeholder message
             readout = "I see an uploaded image. (Add pytesseract here to read text.)"
         else:
             readout = "No text to read."
+
         st.success(readout)
         st.markdown(
             f"""
@@ -258,7 +321,10 @@ with tab_nav:
     )
 
     if st.button("🧭 Take me home"):
-        components.html(f"<script>window.open('{HOME_URL}', '_blank');</script>", height=0)
+        components.html(
+            f"<script>window.open('{HOME_URL}', '_blank');</script>",
+            height=0,
+        )
 
     st.divider()
     st.write("📍 Get current location (browser):")
