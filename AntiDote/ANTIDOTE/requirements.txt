@@ -1,11 +1,13 @@
 streamlit
 streamlit-webrtc
 
-numpy
+# Mediapipe needs numpy < 2
+numpy<2.0
 pillow
 requests
 
 opencv-python-headless
 scikit-learn
+mediapipe
 
 openai>=1.3.0
