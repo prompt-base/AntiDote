@@ -167,11 +167,12 @@ tab_daily, tab_talk, tab_reader, tab_nav, tab_about = st.tabs(
 )
 
 # ---------------- DAILY ----------------
+# ---------------- DAILY ----------------
 with tab_daily:
     st.subheader("🕓 Voice-based Daily Routine")
     st.caption("Say: 'add reminder take medicine at 9pm' (browser mic must be allowed).")
 
-    # Mic button + status
+    # Mic button + status text (front-end only)
     st.markdown(
         """
         <div class="panel">
@@ -183,30 +184,50 @@ with tab_daily:
         </div>
         <script>
         (function(){
-          const btn = document.getElementById("unsee-stt");
+          const btn  = document.getElementById("unsee-stt");
           const stat = document.getElementById("unsee-stt-status");
           if (!btn) return;
+
           btn.addEventListener("click", function(){
             const isLocal = (location.hostname === "localhost" || location.hostname === "127.0.0.1");
+
+            // Security requirement: https or localhost
             if (!window.isSecureContext && !isLocal){
-              stat.innerText = "❌ Mic needs https or localhost.";
+              stat.innerText = "❌ Mic needs HTTPS or localhost.";
               return;
             }
+
             const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
             if (!SR){
-              stat.innerText = "❌ SpeechRecognition not supported.";
+              stat.innerText = "❌ SpeechRecognition not supported in this browser.";
               return;
             }
+
             const rec = new SR();
             rec.lang = "en-US";
-            rec.onstart = ()=>{ stat.innerText = "Listening..."; };
-            rec.onerror = (e)=>{ stat.innerText = "❌ " + e.error; };
-            rec.onresult = (e)=>{
-              const text = e.results[0][0].transcript;
-              const u = new URL(window.location.href);
-              u.searchParams.set("cmd", text);
-              window.location.href = u.toString();
+
+            rec.onstart = () => {
+              stat.innerText = "🎧 Listening...";
             };
+
+            rec.onerror = (e) => {
+              stat.innerText = "❌ " + (e.error || "error");
+            };
+
+            rec.onresult = (e) => {
+              const text = e.results[0][0].transcript;
+              stat.innerText = "Heard: " + text;
+
+              // Try to send text back to Streamlit via query param
+              try {
+                const u = new URL(window.location.href);
+                u.searchParams.set("cmd", text);
+                window.location.href = u.toString();
+              } catch (err) {
+                console.error("Navigation blocked:", err);
+              }
+            };
+
             rec.start();
           });
         })();
@@ -215,24 +236,44 @@ with tab_daily:
         unsafe_allow_html=True,
     )
 
-    # Read query param for voice command
+    # Read voice command from query param (if navigation succeeded)
     cmd = st.query_params.get("cmd")
     if isinstance(cmd, list):
         cmd = cmd[0]
 
-    # Very simple parser for commands
-    if cmd:
-        txt = cmd.lower()
+    # Also give a text fallback (works even if mic fails)
+    typed_cmd = st.text_input("Or type your command here")
+    run_cmd = st.button("Run typed command", key="run_typed_cmd")
+
+    # Ensure reminders list exists
+    if "unseen_tasks" not in st.session_state:
+        st.session_state["unseen_tasks"] = []
+
+    # Helper to process any command string
+    def process_unseen_cmd(command: str):
+        if not command:
+            return
+        txt = command.lower()
         if "add reminder" in txt or "take" in txt:
             st.session_state["unseen_tasks"].append(
-                {"time": datetime.datetime.now().isoformat(timespec="seconds"), "text": cmd}
+                {
+                    "time": datetime.datetime.now().isoformat(timespec="seconds"),
+                    "text": command,
+                }
             )
-            st.success(f"✅ Reminder added: {cmd}")
+            st.success(f"✅ Reminder added: {command}")
         elif "what's on my list" in txt or "list" in txt:
-            # Just show the list below
             st.info("Here is your reminder list below.")
         else:
-            st.info(f"Heard command: {cmd}")
+            st.info(f"Heard command: {command}")
+
+    # 1) Process voice command (if we arrived via ?cmd=...)
+    if cmd:
+        process_unseen_cmd(cmd)
+
+    # 2) Process typed command when button clicked
+    if run_cmd and typed_cmd.strip():
+        process_unseen_cmd(typed_cmd.strip())
 
     st.write("**Your reminders:**")
     if not st.session_state["unseen_tasks"]:
@@ -359,3 +400,4 @@ with tab_about:
         Features: voice commands, daily reminders, text reader, navigation helper.
         """
     )
+
