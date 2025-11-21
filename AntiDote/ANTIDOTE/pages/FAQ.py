@@ -96,7 +96,7 @@ st.markdown(
     }
 
     .faq-stat-value {
-      font-size:1.15rem;
+      font-size:1.1rem;
       font-weight:700;
       color:#e5e7eb;
     }
@@ -109,51 +109,46 @@ st.markdown(
 
     .faq-container {
       max-width:900px;
-      margin: 10px auto 40px auto;
+      margin: 12px auto 40px auto;
       padding: 0 6px;
-    }
-
-    .faq-section-label {
-      font-size:0.8rem;
-      letter-spacing:0.16em;
-      text-transform:uppercase;
-      color:rgba(148,163,184,0.9);
-      margin-bottom:6px;
     }
 
     .faq-question-box {
       border-radius: 14px;
       border: 1px solid rgba(148,163,184,0.55);
-      padding: 8px 10px;
-      background: radial-gradient(circle at 0 0, rgba(56,189,248,0.18), transparent 55%),
+      padding: 10px 12px;
+      background: radial-gradient(circle at 0 0, rgba(56,189,248,0.16), transparent 55%),
                   linear-gradient(145deg, rgba(15,23,42,0.96), rgba(15,23,42,0.98));
       box-shadow: 0 10px 25px rgba(15,23,42,0.9);
-      margin-bottom: 10px;
+      margin-bottom: 14px;
     }
 
     .faq-answer-box {
-      margin-top: 12px;
       border-radius: 14px;
       border: 1px solid rgba(148,163,184,0.5);
-      padding: 10px 14px;
+      padding: 12px 15px;
       background: rgba(15,23,42,0.96);
       box-shadow: 0 10px 25px rgba(15,23,42,0.7);
-      font-size:0.92rem;
+      font-size:0.94rem;
       color:var(--muted);
     }
 
     .faq-question-title {
-      font-size:0.95rem;
-      font-weight:600;
-      color:#e5e7eb;
+      font-size:1.02rem;
+      font-weight:700;
+      color:#f9fafb;
+      margin-bottom:4px;
     }
 
+    /* Make the radio question labels bright and a bit bigger */
     .stRadio > label {
-      font-size:0.9rem;
-      color:#e5e7eb;
+      font-size:0.92rem;
+      color:#f9fafb !important;
     }
-    .stRadio div[role="radiogroup"] > label {
-      margin-bottom:4px;
+
+    .stRadio div[role="radiogroup"] label {
+      color:#f9fafb !important;
+      font-size:0.95rem;
     }
     </style>
     """,
@@ -171,7 +166,7 @@ st.markdown(
       </div>
       <div class="faq-hero-title">ANTIDOTE – FAQ</div>
       <p class="faq-hero-sub">
-        ANTIDOTE is our science project where we bring three ideas together:
+        ANTIDOTE is our project where we explore three ideas together:
         memory support (ALZY), sign language support (SIGNA-LINK),
         and visual support (UNSEEN).
       </p>
@@ -186,26 +181,25 @@ st.markdown(
     <div class="faq-stats-row">
       <div class="faq-stat-card">
         <div class="faq-stat-label">ALZY – Memory</div>
-        <div class="faq-stat-value">Helps remember</div>
+        <div class="faq-stat-value">Daily reminders</div>
         <div class="faq-stat-note">
-          We designed ALZY to remind about medicine, daily work, and faces
-          using simple photos and clear steps.
+          We use simple photos, steps, and local time to support medicine
+          and routine memory.
         </div>
       </div>
       <div class="faq-stat-card">
         <div class="faq-stat-label">SIGNA-LINK – Hands</div>
-        <div class="faq-stat-value">Learns signs</div>
+        <div class="faq-stat-value">Hand landmarks</div>
         <div class="faq-stat-note">
-          We use camera and hand landmarks so we can slowly learn and test
-          basic sign language shapes.
+          We read basic hand points from the camera to practise and test simple signs.
         </div>
       </div>
       <div class="faq-stat-card">
         <div class="faq-stat-label">UNSEEN – Vision</div>
-        <div class="faq-stat-value">Describes images</div>
+        <div class="faq-stat-value">Picture to voice</div>
         <div class="faq-stat-note">
-          We let AI describe pictures in short sentences to support students
-          who like listening more than reading.
+          We let AI describe an image in short sentences to help students
+          who like listening.
         </div>
       </div>
     </div>
@@ -216,111 +210,120 @@ st.markdown(
 st.markdown("---")
 st.markdown('<div class="faq-container">', unsafe_allow_html=True)
 
-# -------------------- FAQ DATA (simple, class 8 level) --------------------
-faq_data = {
-    "Our Journey": [
-        {
-            "q": "Why did we start the ANTIDOTE project?",
-            "a": """
-We saw real problems around us. Some elders forget medicine and faces, some people use
-sign language, and some students find pictures hard to understand without a voice.
-We wanted one project where we try to help all three using AI and simple tools.
+# -------------------- FLAT FAQ LIST (NO CATEGORIES) --------------------
+faq_items = [
+    {
+        "q": "Why did we start the ANTIDOTE project?",
+        "a": """
+We saw real problems around us. Some elders have memory difficulty, some people
+depend on sign language, and some students understand pictures better when
+someone reads them aloud. We wanted one science project where we try to support
+all three with simple, kind technology.
 """,
-        },
-        {
-            "q": "What difficulties did we face while building this project?",
-            "a": """
-We struggled with many things: camera and mic permissions in the browser, Python package
-versions, slow video in the app, and making the screen easy for elders to read.
-Sometimes the app broke, and we had to fix errors step by step with patience.
+    },
+    {
+        "q": "What is ALZY in simple words?",
+        "a": """
+ALZY is a memory helper. We store small reminders with a title, date, time,
+photo, and easy steps. ALZY shows what to do next and can repeat some reminders
+after a few days so that faces, tasks, and medicine routines become more familiar.
 """,
-        },
-        {
-            "q": "What did we learn from these difficulties?",
-            "a": """
-We learned to debug slowly instead of changing everything at once. We learned to split
-our work into three clear parts – ALZY, SIGNA-LINK, and UNSEEN – and to think about
-how a real person will feel when using the screen, not only about the code.
+    },
+    {
+        "q": "What is SIGNA-LINK in simple words?",
+        "a": """
+SIGNA-LINK is our sign language helper. Using the camera, we read hand points
+(“landmarks”) and match them with basic sign shapes. This helps us learn, practise,
+and test simple signs in a fun, interactive way.
 """,
-        },
-    ],
-    "How ALZY Works": [
-        {
-            "q": "How does ALZY help with memory and medicine reminders?",
-            "a": """
-In ALZY we store small records: title, date, time, photo, and simple steps.
-We use the local time zone so reminders stay correct for our place.
-We also repeat some reminders after a few days, so the person sees the same face
-or task again and slowly remembers better.
+    },
+    {
+        "q": "What is UNSEEN in simple words?",
+        "a": """
+UNSEEN is our visual support tool. We send an image to an AI model and get back a
+short description in easy sentences. This can help students who prefer listening
+to understand what is happening in a picture or scene.
 """,
-        },
-        {
-            "q": "How do we use AI models inside the project?",
-            "a": """
-For ALZY, we mix simple rules with a language model. Rules handle the date and time,
-and the model helps us answer questions in friendly, short sentences.
-SIGNA-LINK uses hand points from the camera to guess signs.
-UNSEEN uses image features to create short text about the scene.
+    },
+    {
+        "q": "How does ALZY help with memory and medicine reminders?",
+        "a": """
+In ALZY we use the local time zone so reminders follow our real clock.
+Each reminder can include photos and step-by-step text. For some items,
+we use small spaced gaps (like 1, 2, 4, 7 days) so that important faces
+and tasks return again, which can support long-term memory.
 """,
-        },
-        {
-            "q": "How did we connect ChatGPT-style models with our app?",
-            "a": """
-We send the chat history and a short instruction message from our app to a language
-model API. In that message we explain that this is for memory support, so the answers
-must be calm, clear, and not too long. Simple questions like today’s date are answered
-directly from our own code so that the date always matches our real calendar.
+    },
+    {
+        "q": "How do we use AI models inside this project?",
+        "a": """
+We combine simple rules with AI models. Rules handle things like dates,
+times, and schedules. For friendly answers, we send short messages to a
+language model and ask it to reply in clear, small sentences. For signs and
+images, we use models that work with hand points and picture features.
 """,
-        },
-    ],
-    "For Guardians & Teachers": [
-        {
-            "q": "How can guardians use this project in daily life?",
-            "a": """
-Guardians can set reminders in ALZY with photos and steps for medicine or daily tasks.
-The person can open the app and see the picture, read the steps, or listen to a short
-answer from the chatbot. This does not replace human care; it only gives extra support.
+    },
+    {
+        "q": "How did we connect ChatGPT-style models with our app?",
+        "a": """
+From our app we send the last few chat messages plus an instruction telling
+the model that this is for gentle support, not for medical advice.
+We also give the correct local date, so when someone asks about today,
+the model answer stays in sync with our own time functions in the code.
 """,
-        },
-        {
-            "q": "How can teachers use these ideas in a classroom?",
-            "a": """
-Teachers can show SIGNA-LINK to explain how computers see hand shapes,
-and UNSEEN to show how AI turns pictures into text.
-This can start discussions about disability, inclusion, and how technology
-can support people in kind ways.
+    },
+    {
+        "q": "What difficulties did we face while building ANTIDOTE?",
+        "a": """
+We faced browser permission problems for camera and microphone, Python
+package version conflicts, and slow video frames. Sometimes the layout was
+too confusing for elders, so we redesigned the screens. When errors came,
+we had to read logs carefully and fix them line by line.
 """,
-        },
-        {
-            "q": "What do we want to improve next?",
-            "a": """
-Next, we want to add more languages like Bengali with English, make the system work
-better on slow internet, and train the sign part with more clean examples.
-We also want to test the app with real families and teachers to see which parts
-feel helpful and which parts need to be changed.
+    },
+    {
+        "q": "What did we learn from these difficulties?",
+        "a": """
+We learned not to panic when the app breaks. We learned to change only
+one part at a time, test it, and then move to the next part. We also
+understood that good design is not only about code speed but also about
+how calm and simple the screen feels for real people.
 """,
-        },
-    ],
-}
+    },
+    {
+        "q": "How can guardians use this project in daily life?",
+        "a": """
+Guardians can create reminders in ALZY for medicine, walking, drinking water,
+or phone calls with family. They can add photos and short steps. The person
+can open the app, see or hear what to do, and feel a bit more independent.
+This is extra support, not a replacement for real care.
+""",
+    },
+    {
+        "q": "How can teachers use these ideas in the classroom?",
+        "a": """
+Teachers can show SIGNA-LINK to explain how computers see hand shapes and
+UNSEEN to show how AI reads images. This can start discussions about
+inclusion, disability, and how technology can support people if we design
+it with empathy.
+""",
+    },
+    {
+        "q": "What do we want to improve next?",
+        "a": """
+Next, we want to add more language options like Bengali plus English,
+make the app smoother on weak internet, train the sign part with more
+correct examples, and test the system with real families and teachers
+so we can adjust it based on honest feedback.
+""",
+    },
+]
 
-# -------------------- SECTION SELECTION --------------------
-section_names = list(faq_data.keys())
+# -------------------- SHOW ALL QUESTIONS (STANDARD STYLE) --------------------
+st.markdown("### Frequently Asked Questions")
 
-st.markdown(
-    '<div class="faq-section-label">Frequently Asked Questions</div>',
-    unsafe_allow_html=True,
-)
+question_texts = [item["q"] for item in faq_items]
 
-selected_section = st.radio(
-    "Choose a topic",
-    section_names,
-    horizontal=True,
-)
-
-questions = faq_data[selected_section]
-question_texts = [item["q"] for item in questions]
-
-st.markdown("### Questions")
 with st.container():
     st.markdown('<div class="faq-question-box">', unsafe_allow_html=True)
     selected_question = st.radio(
@@ -332,13 +335,13 @@ with st.container():
     st.markdown('</div>', unsafe_allow_html=True)
 
 # -------------------- SHOW ANSWER FOR SELECTED QUESTION --------------------
-selected_item = next(item for item in questions if item["q"] == selected_question)
+selected_item = next(item for item in faq_items if item["q"] == selected_question)
 
 st.markdown(
     f"""
     <div class="faq-answer-box">
       <div class="faq-question-title">{selected_item['q']}</div>
-      <div style="margin-top:6px;">{selected_item['a']}</div>
+      <div>{selected_item['a']}</div>
     </div>
     """,
     unsafe_allow_html=True,
