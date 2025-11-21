@@ -113,24 +113,15 @@ st.markdown(
       padding: 0 6px;
     }
 
-    .faq-question-box {
-      border-radius: 14px;
-      border: 1px solid rgba(148,163,184,0.55);
-      padding: 10px 12px;
-      background: radial-gradient(circle at 0 0, rgba(56,189,248,0.16), transparent 55%),
-                  linear-gradient(145deg, rgba(15,23,42,0.96), rgba(15,23,42,0.98));
-      box-shadow: 0 10px 25px rgba(15,23,42,0.9);
-      margin-bottom: 14px;
-    }
-
     .faq-answer-box {
       border-radius: 14px;
       border: 1px solid rgba(148,163,184,0.5);
-      padding: 12px 15px;
+      padding: 10px 12px;
       background: rgba(15,23,42,0.96);
       box-shadow: 0 10px 25px rgba(15,23,42,0.7);
       font-size:0.94rem;
       color:var(--muted);
+      margin-top:4px;
     }
 
     .faq-question-title {
@@ -140,15 +131,16 @@ st.markdown(
       margin-bottom:4px;
     }
 
-    /* Make the radio question labels bright and a bit bigger */
-    .stRadio > label {
-      font-size:0.92rem;
+    /* Make expander headers (questions) bright white and larger */
+    .streamlit-expanderHeader {
+      font-size:1.02rem !important;
+      font-weight:700 !important;
       color:#f9fafb !important;
     }
-
-    .stRadio div[role="radiogroup"] label {
+    .streamlit-expanderHeader p,
+    .streamlit-expanderHeader span,
+    .streamlit-expanderHeader div {
       color:#f9fafb !important;
-      font-size:0.95rem;
     }
     </style>
     """,
@@ -210,7 +202,7 @@ st.markdown(
 st.markdown("---")
 st.markdown('<div class="faq-container">', unsafe_allow_html=True)
 
-# -------------------- FLAT FAQ LIST (NO CATEGORIES) --------------------
+# -------------------- FLAT FAQ LIST --------------------
 faq_items = [
     {
         "q": "Why did we start the ANTIDOTE project?",
@@ -319,32 +311,19 @@ so we can adjust it based on honest feedback.
     },
 ]
 
-# -------------------- SHOW ALL QUESTIONS (STANDARD STYLE) --------------------
 st.markdown("### Frequently Asked Questions")
 
-question_texts = [item["q"] for item in faq_items]
-
-with st.container():
-    st.markdown('<div class="faq-question-box">', unsafe_allow_html=True)
-    selected_question = st.radio(
-        "Questions",
-        question_texts,
-        index=0,
-        label_visibility="collapsed",
-    )
-    st.markdown('</div>', unsafe_allow_html=True)
-
-# -------------------- SHOW ANSWER FOR SELECTED QUESTION --------------------
-selected_item = next(item for item in faq_items if item["q"] == selected_question)
-
-st.markdown(
-    f"""
-    <div class="faq-answer-box">
-      <div class="faq-question-title">{selected_item['q']}</div>
-      <div>{selected_item['a']}</div>
-    </div>
-    """,
-    unsafe_allow_html=True,
-)
+# -------------------- EXPANDERS: QUESTION + ANSWER --------------------
+for i, item in enumerate(faq_items):
+    with st.expander(item["q"], expanded=(i == 0)):
+        st.markdown(
+            f"""
+            <div class="faq-answer-box">
+              <div class="faq-question-title">{item['q']}</div>
+              <div>{item['a']}</div>
+            </div>
+            """,
+            unsafe_allow_html=True,
+        )
 
 st.markdown("</div>", unsafe_allow_html=True)
