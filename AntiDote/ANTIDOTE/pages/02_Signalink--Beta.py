@@ -760,6 +760,11 @@ else:
         st.caption(
             "A–E are pre-loaded on this server. More signs can be added in 📸 Samples & Train."
         )
+        st.markdown(
+            "- Hold **one hand** clearly in front of the camera.\n"
+            "- Try not to cover the hand with your face.\n"
+            "- Keep the hand steady for a moment so the model can read it.",
+        )
 
         # If mediapipe is not available (e.g., Python 3.13), disable this feature
         if mp is None:
@@ -814,7 +819,7 @@ else:
                             return img_bgr
 
                         res = hands.process(small_rgb)
-                        pred_text = "No hand"
+                        pred_text = "Show one clear hand"
                         conf_text = ""
                         if res and res.multi_hand_landmarks:
                             lms = res.multi_hand_landmarks[0]
@@ -854,7 +859,7 @@ else:
                             (img_bgr.shape[1], img_bgr.shape[0]),
                             interpolation=cv2.INTER_LINEAR,
                         )
-                        cv2.rectangle(out, (10, 10), (380, 70), (0, 0, 0), -1)
+                        cv2.rectangle(out, (10, 10), (420, 80), (0, 0, 0), -1)
                         cv2.putText(
                             out,
                             f"Pred: {pred_text}",
@@ -893,7 +898,7 @@ else:
                     )
                 else:
                     st.info(
-                        "WebRTC is not available; snapshot prediction is also disabled on this server.",
+                        "WebRTC is not available; live camera prediction is disabled on this server.",
                         icon="ℹ️",
                     )
 
@@ -901,7 +906,7 @@ else:
     with tab_samples:
         st.subheader("📸 Samples & Train")
         st.caption(
-            "A–E already have some synthetic samples so the demo works without training. "
+            "A–E already have some starter samples so the demo works immediately. "
             "More real samples can be collected here to improve accuracy."
         )
 
@@ -921,12 +926,24 @@ else:
             )
         else:
             db = load_db()
-            with st.expander("Current dataset summary", expanded=True):
-                counts = db_counts(db)
-                st.write(counts if counts else "No samples yet.")
+            counts = db_counts(db)
+
+            st.markdown("**How many pictures are saved for each sign?**")
+            if counts:
+                # Show as simple text, not raw JSON
+                lines = []
+                for label in sorted(counts.keys()):
+                    lines.append(f"- **{label}** → {counts[label]} sample(s)")
+                st.markdown("\n".join(lines))
+                st.caption("Example: '**A → 3 samples**' means three training photos are saved for the sign A.")
+            else:
+                st.info("No samples saved yet. Choose a label and start capturing images.")
+
+            st.markdown("---")
 
             label = st.selectbox("Choose a label to record", LABELS, index=0)
             st.write("1) Capture an image. 2) Click **Add sample**.")
+            st.caption("Tip: Hold one hand clearly in front of the camera. Make sure the hand is not too dark or too bright.")
             snap = st.camera_input("Capture a hand image")
 
             c1, c2, c3 = st.columns(3)
@@ -945,14 +962,18 @@ else:
                     vec, _ = extract_hand_vector_snapshot(img)
                     if vec is None:
                         st.error(
-                            "No hand detected. Try better lighting and one hand in frame."
+                            "We could not find a clear hand in this photo.\n\n"
+                            "Please try again:\n"
+                            "- Hold **one hand** in front of the camera.\n"
+                            "- Keep the hand inside the frame.\n"
+                            "- Use good lighting so the hand is visible."
                         )
                     else:
                         db.setdefault(label, []).append(vec.tolist())
                         save_db(db)
                         st.success(
                             f"Added 1 sample to **{label}**. "
-                            f"Total for {label}: {len(db[label])}"
+                            f"Now we have {len(db[label])} sample(s) for this sign."
                         )
 
             if clear_ok:
@@ -971,7 +992,7 @@ else:
                 if clf is None:
                     st.error(
                         "Need at least 2 samples total "
-                        "(ideally ≥10 per label) to train."
+                        "(ideally 10 or more per sign) to train."
                     )
                 else:
                     # Save for all visitors on this server (persistent while container is running)
@@ -980,18 +1001,18 @@ else:
                             PERSISTENT_MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
                             joblib.dump(clf, PERSISTENT_MODEL_PATH)
                             st.success(
-                                f"Model trained on classes: {', '.join(class_labels)} "
+                                f"Model trained on signs: {', '.join(class_labels)} "
                                 "and saved for all visitors on this server."
                             )
                         except Exception as e:
                             st.warning(
-                                f"Model trained on classes: {', '.join(class_labels)}, "
+                                f"Model trained on signs: {', '.join(class_labels)}, "
                                 f"but could not save persistent file: {e}"
                             )
                     else:
                         # joblib not installed – still trained in memory for this session
                         st.success(
-                            f"Model trained on classes: {', '.join(class_labels)}"
+                            f"Model trained on signs: {', '.join(class_labels)}"
                         )
 
     # HELP
@@ -1002,11 +1023,13 @@ else:
             **For local development (Python ≤ 3.12):**
             ```bash
             pip install mediapipe opencv-python scikit-learn
-            pip install streamlit-webrtc
+            pip install streamlit-webrtc joblib
             ```
+
             **Workflow for better accuracy:**
-            1. Go to **📸 Samples & Train**, pick a label (e.g., "A"), capture 10–30 snapshots, and click **Train / Retrain model**.  
-            2. Repeat for other labels (B, C, Hello, Thank you, …).  
-            3. Open **✋ Live Translator** and keep one hand in frame—predictions appear with confidence (on supported environments).
+
+            1. Go to **📸 Samples & Train**, pick a sign (for example, "A"), capture 10–30 snapshots, and click **Train / Retrain model**.  
+            2. Repeat for other signs (B, C, Hello, Thank you, …).  
+            3. Open **✋ Live Translator** and show one hand sign to the camera—predictions appear with confidence (on supported environments).
             """
         )
