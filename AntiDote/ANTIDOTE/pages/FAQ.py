@@ -34,7 +34,7 @@ st.markdown(
 
     .faq-hero {
       text-align:center;
-      padding: 10px 0 6px 0;
+      padding: 10px 0 4px 0;
     }
 
     .faq-pill {
@@ -53,17 +53,10 @@ st.markdown(
       font-size:2.0rem;
       font-weight:800;
       margin-top:10px;
-      margin-bottom:6px;
+      margin-bottom:4px;
       background:linear-gradient(90deg,#e5e7eb,#a5b4fc,#22d3ee);
       -webkit-background-clip:text;
       color:transparent;
-    }
-
-    .faq-hero-sub {
-      font-size:0.94rem;
-      color:var(--muted);
-      max-width:540px;
-      margin:0 auto;
     }
 
     .faq-stats-row {
@@ -71,7 +64,7 @@ st.markdown(
       flex-wrap:wrap;
       justify-content:center;
       gap:12px;
-      margin:18px auto 4px auto;
+      margin:8px auto 4px auto;   /* smaller vertical gap */
       max-width:720px;
     }
 
@@ -109,7 +102,7 @@ st.markdown(
 
     .faq-container {
       max-width:900px;
-      margin: 12px auto 40px auto;
+      margin: 10px auto 40px auto;
       padding: 0 6px;
     }
 
@@ -131,15 +124,28 @@ st.markdown(
       margin-bottom:4px;
     }
 
-    /* Make expander headers (questions) bright white and larger */
+    /* --- Make expander headers (questions) always dark bg & white text --- */
     .streamlit-expanderHeader {
       font-size:1.02rem !important;
       font-weight:700 !important;
       color:#f9fafb !important;
+      background:rgba(15,23,42,0.95) !important;
+      border-radius:12px !important;
     }
     .streamlit-expanderHeader p,
     .streamlit-expanderHeader span,
     .streamlit-expanderHeader div {
+      color:#f9fafb !important;
+    }
+
+    [data-testid="stExpander"] summary {
+      background-color: rgba(15,23,42,0.95) !important;
+      color:#f9fafb !important;
+    }
+    [data-testid="stExpander"] summary:hover,
+    [data-testid="stExpander"] summary:focus,
+    [data-testid="stExpander"] summary:active {
+      background-color: rgba(15,23,42,0.98) !important;
       color:#f9fafb !important;
     }
     </style>
@@ -157,11 +163,6 @@ st.markdown(
         <span>ALZY • SIGNA-LINK • UNSEEN</span>
       </div>
       <div class="faq-hero-title">ANTIDOTE – FAQ</div>
-      <p class="faq-hero-sub">
-        ANTIDOTE is our project where we explore three ideas together:
-        memory support (ALZY), sign language support (SIGNA-LINK),
-        and visual support (UNSEEN).
-      </p>
     </div>
     """,
     unsafe_allow_html=True,
@@ -199,7 +200,6 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-st.markdown("---")
 st.markdown('<div class="faq-container">', unsafe_allow_html=True)
 
 # -------------------- FLAT FAQ LIST --------------------
@@ -289,15 +289,6 @@ Guardians can create reminders in ALZY for medicine, walking, drinking water,
 or phone calls with family. They can add photos and short steps. The person
 can open the app, see or hear what to do, and feel a bit more independent.
 This is extra support, not a replacement for real care.
-""",
-    },
-    {
-        "q": "How can teachers use these ideas in the classroom?",
-        "a": """
-Teachers can show SIGNA-LINK to explain how computers see hand shapes and
-UNSEEN to show how AI reads images. This can start discussions about
-inclusion, disability, and how technology can support people if we design
-it with empathy.
 """,
     },
     {
