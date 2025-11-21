@@ -15,7 +15,6 @@ st.markdown(
       --bg0:#0b1220; --bg1:#0f172a; --bg2:#020617;
       --card:#020617;
       --brand:#7c3aed; --brand-2:#22d3ee;
-      --ok:#10b981; --warn:#f59e0b; --danger:#ef4444;
       --border:rgba(148,163,184,0.45);
       --muted:rgba(226,232,240,0.82);
     }
@@ -111,6 +110,7 @@ st.markdown(
     .faq-container {
       max-width:900px;
       margin: 10px auto 40px auto;
+      padding: 0 6px;
     }
 
     .faq-section-label {
@@ -121,62 +121,39 @@ st.markdown(
       margin-bottom:6px;
     }
 
-    .faq-expander {
-      border-radius:14px !important;
-      border: 1px solid rgba(148,163,184,0.55) !important;
+    .faq-question-box {
+      border-radius: 14px;
+      border: 1px solid rgba(148,163,184,0.55);
+      padding: 8px 10px;
       background: radial-gradient(circle at 0 0, rgba(56,189,248,0.18), transparent 55%),
                   linear-gradient(145deg, rgba(15,23,42,0.96), rgba(15,23,42,0.98));
       box-shadow: 0 10px 25px rgba(15,23,42,0.9);
-      padding: 2px 6px !important;
       margin-bottom: 10px;
     }
 
-    .faq-expander:hover {
-      border-color: rgba(129,140,248,0.9) !important;
-      box-shadow: 0 16px 36px rgba(15,23,42,1);
-    }
-
-    .faq-question {
-      font-weight:600;
-      font-size:0.96rem;
-      color:#e5e7eb;
-    }
-
-    .faq-answer {
-      font-size:0.9rem;
+    .faq-answer-box {
+      margin-top: 12px;
+      border-radius: 14px;
+      border: 1px solid rgba(148,163,184,0.5);
+      padding: 10px 14px;
+      background: rgba(15,23,42,0.96);
+      box-shadow: 0 10px 25px rgba(15,23,42,0.7);
+      font-size:0.92rem;
       color:var(--muted);
     }
 
-    .faq-tag-row {
-      display:flex;
-      flex-wrap:wrap;
-      gap:6px;
-      margin-bottom:4px;
+    .faq-question-title {
+      font-size:0.95rem;
+      font-weight:600;
+      color:#e5e7eb;
     }
 
-    .faq-tag {
-      font-size:0.72rem;
-      padding:2px 8px;
-      border-radius:999px;
-      border:1px solid rgba(148,163,184,0.6);
-      color:rgba(226,232,240,0.9);
-      background:rgba(15,23,42,0.85);
-    }
-
-    .stButton > button {
-      background-image: linear-gradient(90deg, var(--brand), var(--brand-2));
-      color: #020617 !important;
-      border-radius: 999px !important;
-      padding: 6px 16px !important;
-      font-weight: 700;
-      border:none;
-      box-shadow: 0 8px 22px rgba(124,58,237,.55);
+    .stRadio > label {
       font-size:0.9rem;
+      color:#e5e7eb;
     }
-
-    .stButton > button:hover {
-      transform: translateY(-1px);
-      box-shadow: 0 12px 30px rgba(124,58,237,.7);
+    .stRadio div[role="radiogroup"] > label {
+      margin-bottom:4px;
     }
     </style>
     """,
@@ -190,44 +167,45 @@ st.markdown(
       <div class="faq-pill">
         <span>🔬 School Science Fair Project</span>
         <span>•</span>
-        <span>AI • Memory • Sign Language • Vision</span>
+        <span>ALZY • SIGNA-LINK • UNSEEN</span>
       </div>
-      <div class="faq-hero-title">ANTIDOTE – Project FAQ</div>
+      <div class="faq-hero-title">ANTIDOTE – FAQ</div>
       <p class="faq-hero-sub">
-        ANTIDOTE brings together three ideas – ALZY, SIGNA-LINK, and UNSEEN – to support memory,
-        communication, and visual understanding using AI, cameras, and simple interfaces.
+        ANTIDOTE is our science project where we bring three ideas together:
+        memory support (ALZY), sign language support (SIGNA-LINK),
+        and visual support (UNSEEN).
       </p>
     </div>
     """,
     unsafe_allow_html=True,
 )
 
-# -------------------- SMALL STATS (short & simple) --------------------
+# -------------------- SMALL SIMPLE STATS --------------------
 st.markdown(
     """
     <div class="faq-stats-row">
       <div class="faq-stat-card">
-        <div class="faq-stat-label">Why ALZY?</div>
-        <div class="faq-stat-value">Memory challenges are rising</div>
+        <div class="faq-stat-label">ALZY – Memory</div>
+        <div class="faq-stat-value">Helps remember</div>
         <div class="faq-stat-note">
-          Around the world, many older people live with memory loss or early dementia.
-          Even small reminders for medicine, faces, and places can reduce confusion and stress.
+          We designed ALZY to remind about medicine, daily work, and faces
+          using simple photos and clear steps.
         </div>
       </div>
       <div class="faq-stat-card">
-        <div class="faq-stat-label">Why SIGNA-LINK?</div>
-        <div class="faq-stat-value">Sign language is a bridge</div>
+        <div class="faq-stat-label">SIGNA-LINK – Hands</div>
+        <div class="faq-stat-value">Learns signs</div>
         <div class="faq-stat-note">
-          Not everyone speaks with voice. Camera-based sign support can help us notice hand shapes 
-          and learn basic signs in a playful way.
+          We use camera and hand landmarks so we can slowly learn and test
+          basic sign language shapes.
         </div>
       </div>
       <div class="faq-stat-card">
-        <div class="faq-stat-label">Why UNSEEN?</div>
-        <div class="faq-stat-value">Images hide stories</div>
+        <div class="faq-stat-label">UNSEEN – Vision</div>
+        <div class="faq-stat-value">Describes images</div>
         <div class="faq-stat-note">
-          Simple AI vision can turn scenes into short descriptions, which can support students
-          who prefer listening or need help understanding pictures.
+          We let AI describe pictures in short sentences to support students
+          who like listening more than reading.
         </div>
       </div>
     </div>
@@ -238,177 +216,132 @@ st.markdown(
 st.markdown("---")
 st.markdown('<div class="faq-container">', unsafe_allow_html=True)
 
-# -------------------- FAQ DATA --------------------
-faq_blocks = {
-    "Our Journey & Motivation": [
+# -------------------- FAQ DATA (simple, class 8 level) --------------------
+faq_data = {
+    "Our Journey": [
         {
             "q": "Why did we start the ANTIDOTE project?",
-            "tags": ["Story", "Motivation"],
             "a": """
-We noticed three daily situations around us – grandparents forgetting medicine or faces, 
-friends being curious about sign language, and students who understand better by hearing 
-a picture description instead of only looking at it. We wanted one project that connects 
-all three: memory support (ALZY), sign support (SIGNA-LINK), and visual support (UNSEEN) 
-using a single AI-powered platform.
+We saw real problems around us. Some elders forget medicine and faces, some people use
+sign language, and some students find pictures hard to understand without a voice.
+We wanted one project where we try to help all three using AI and simple tools.
 """,
         },
         {
-            "q": "What difficulties did we face during this project?",
-            "tags": ["Challenges", "Learning"],
+            "q": "What difficulties did we face while building this project?",
             "a": """
-We faced several challenges: getting the camera and microphone permissions to work in the 
-browser, finding the right Python and Mediapipe versions, managing real-time video in 
-Streamlit, and keeping the interface simple enough for seniors. Each problem forced us to 
-read documentation carefully, test many small changes, and sometimes fully redesign parts 
-of the code until the system became stable.
+We struggled with many things: camera and mic permissions in the browser, Python package
+versions, slow video in the app, and making the screen easy for elders to read.
+Sometimes the app broke, and we had to fix errors step by step with patience.
 """,
         },
         {
-            "q": "What did we learn from solving these problems?",
-            "tags": ["Reflection", "Skills"],
+            "q": "What did we learn from these difficulties?",
             "a": """
-We learned to debug step-by-step instead of changing everything at once, to read error 
-logs with patience, and to separate the project into clear modules: one for memory, one 
-for sign language, and one for vision. We also learned that user experience is as 
-important as model accuracy – if the interface is confusing, the smartest AI still feels 
-hard to use.
+We learned to debug slowly instead of changing everything at once. We learned to split
+our work into three clear parts – ALZY, SIGNA-LINK, and UNSEEN – and to think about
+how a real person will feel when using the screen, not only about the code.
 """,
         },
     ],
-    "Technology Behind ALZY": [
+    "How ALZY Works": [
         {
             "q": "How does ALZY help with memory and medicine reminders?",
-            "tags": ["ALZY", "Reminders"],
             "a": """
-ALZY stores reminders, photos, and simple step-by-step instructions in a structured JSON 
-format. We schedule next reminder times using spaced repetition ideas and local time (IST), 
-so medicine alerts and face-recall sessions can repeat gently over days. A chatbot layer 
-then uses this stored context – such as today’s date or upcoming reminders – to answer 
-questions in short, calm sentences.
+In ALZY we store small records: title, date, time, photo, and simple steps.
+We use the local time zone so reminders stay correct for our place.
+We also repeat some reminders after a few days, so the person sees the same face
+or task again and slowly remembers better.
 """,
         },
         {
-            "q": "How are AI models used and connected inside the project?",
-            "tags": ["AI", "Architecture"],
+            "q": "How do we use AI models inside the project?",
             "a": """
-For ALZY, we combine rule-based logic (for dates, times, and reminders) with a language 
-model. SIGNA-LINK uses Mediapipe to detect hand landmarks and a machine-learning model to 
-classify hand shapes. UNSEEN uses image features plus a language model to turn visual 
-information into short spoken or written descriptions. All three parts share a common 
-idea: the model produces smart suggestions, and the interface shows them in a way that 
-feels safe and easy.
+For ALZY, we mix simple rules with a language model. Rules handle the date and time,
+and the model helps us answer questions in friendly, short sentences.
+SIGNA-LINK uses hand points from the camera to guess signs.
+UNSEEN uses image features to create short text about the scene.
 """,
         },
         {
-            "q": "How did we integrate ChatGPT or similar language models?",
-            "tags": ["ChatGPT", "Integration"],
+            "q": "How did we connect ChatGPT-style models with our app?",
             "a": """
-We created a small backend layer that sends our chat history and a careful system prompt 
-to a language-model API. The system prompt explains that this is a memory assistant for 
-an elder person and should reply in short, friendly sentences. We also pre-answer simple 
-questions like “What is today’s date?” locally, so the assistant feels fast and always 
-aligned with the real calendar and time zone.
+We send the chat history and a short instruction message from our app to a language
+model API. In that message we explain that this is for memory support, so the answers
+must be calm, clear, and not too long. Simple questions like today’s date are answered
+directly from our own code so that the date always matches our real calendar.
 """,
         },
     ],
-    "Guardian & Teacher Questions": [
+    "For Guardians & Teachers": [
         {
-            "q": "How is this project useful for guardians and teachers?",
-            "tags": ["Guardians", "Teachers"],
+            "q": "How can guardians use this project in daily life?",
             "a": """
-Guardians can use ALZY to set medicine and daily activity reminders with photos and 
-simple instructions that can be replayed any time. Teachers can use SIGNA-LINK to 
-introduce basic sign concepts in class and UNSEEN to demonstrate how AI can describe 
-images in plain language. The goal is not to replace human care or teaching, but to add 
-small digital helpers that make communication easier.
+Guardians can set reminders in ALZY with photos and steps for medicine or daily tasks.
+The person can open the app and see the picture, read the steps, or listen to a short
+answer from the chatbot. This does not replace human care; it only gives extra support.
 """,
         },
         {
-            "q": "Is this project meant to be a medical device?",
-            "tags": ["Safety", "Scope"],
+            "q": "How can teachers use these ideas in a classroom?",
             "a": """
-No. ANTIDOTE is a school science project and a technology prototype. It is not a medical 
-device and does not make medical decisions. It only offers reminders, visual support, and 
-simple explanations. For any medical decision, elders and families should always follow 
-professional doctors and official advice.
+Teachers can show SIGNA-LINK to explain how computers see hand shapes,
+and UNSEEN to show how AI turns pictures into text.
+This can start discussions about disability, inclusion, and how technology
+can support people in kind ways.
 """,
         },
         {
-            "q": "What are the next steps we want to explore?",
-            "tags": ["Future", "Ideas"],
+            "q": "What do we want to improve next?",
             "a": """
-Next, we want to add multi-language support (for example Bengali and English together), 
-better offline behaviour for limited internet situations, and more accurate sign 
-recognition by collecting a larger, carefully consented training dataset. We also hope to 
-run small usability tests with families and teachers to see which features feel most 
-comfortable in real daily life.
+Next, we want to add more languages like Bengali with English, make the system work
+better on slow internet, and train the sign part with more clean examples.
+We also want to test the app with real families and teachers to see which parts
+feel helpful and which parts need to be changed.
 """,
         },
     ],
 }
 
-# -------------------- RENDER FAQ (single open at a time) --------------------
+# -------------------- SECTION SELECTION --------------------
+section_names = list(faq_data.keys())
+
 st.markdown(
     '<div class="faq-section-label">Frequently Asked Questions</div>',
     unsafe_allow_html=True,
 )
 
-# keep track of which question is open
-if "faq_open_key" not in st.session_state:
-    st.session_state.faq_open_key = ""
+selected_section = st.radio(
+    "Choose a topic",
+    section_names,
+    horizontal=True,
+)
 
-def render_faq_block(block_title: str, items):
-    st.markdown(f"### {block_title}")
-    for idx, item in enumerate(items):
-        key = f"faq_{block_title}_{idx}"
+questions = faq_data[selected_section]
+question_texts = [item["q"] for item in questions]
 
-        # build label row with tags
-        tag_html = ""
-        if item.get("tags"):
-            tag_html = '<div class="faq-tag-row">' + "".join(
-                f'<span class="faq-tag">{t}</span>' for t in item["tags"]
-            ) + "</div>"
+st.markdown("### Questions")
+with st.container():
+    st.markdown('<div class="faq-question-box">', unsafe_allow_html=True)
+    selected_question = st.radio(
+        "Questions",
+        question_texts,
+        index=0,
+        label_visibility="collapsed",
+    )
+    st.markdown('</div>', unsafe_allow_html=True)
 
-        # expander open state = matches current open key
-        is_open = st.session_state.faq_open_key == key
+# -------------------- SHOW ANSWER FOR SELECTED QUESTION --------------------
+selected_item = next(item for item in questions if item["q"] == selected_question)
 
-        # we wrap expander title with our styled span
-        with st.expander(
-            label=f"🔹 {item['q']}",
-            expanded=is_open,
-        ):
-            # question label
-            st.markdown(
-                f"""
-                <div class="faq-question">{item['q']}</div>
-                {tag_html}
-                """,
-                unsafe_allow_html=True,
-            )
-            st.markdown(f"<div class='faq-answer'>{item['a']}</div>", unsafe_allow_html=True)
-
-            # small "Collapse" button so opening one closes others
-            col_btn, _ = st.columns([1, 3])
-            with col_btn:
-                if st.button("Close", key=key + "_close"):
-                    if st.session_state.faq_open_key == key:
-                        st.session_state.faq_open_key = ""
-                    st.experimental_rerun()
-
-        # if user clicks on header, Streamlit sadly does not give a direct event,
-        # so we use a small trick: a "Show answer" button row under each header
-        # This row is outside the expander, so it is always visible.
-        # (Lightweight helper for science-fair demo.)
-        show_col, _ = st.columns([1, 3])
-        with show_col:
-            if st.button("Show / Focus this answer", key=key + "_focus"):
-                st.session_state.faq_open_key = key
-                st.experimental_rerun()
-
-        st.markdown("", unsafe_allow_html=True)  # small spacing
-
-
-for block_title, items in faq_blocks.items():
-    render_faq_block(block_title, items)
+st.markdown(
+    f"""
+    <div class="faq-answer-box">
+      <div class="faq-question-title">{selected_item['q']}</div>
+      <div style="margin-top:6px;">{selected_item['a']}</div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
 st.markdown("</div>", unsafe_allow_html=True)
