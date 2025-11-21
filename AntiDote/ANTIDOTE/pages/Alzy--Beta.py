@@ -504,12 +504,25 @@ def maybe_local_answer(user_input: str) -> Optional[str]:
     q = user_input.strip().lower()
 
     now = now_local()  # IST
+    date_str = now.strftime("%A, %d %B %Y")
+    time_str = now.strftime("%I:%M %p")
+
+    # Date + time together
+    if ("date" in q and "time" in q) or "date with time" in q or "date & time" in q:
+        return f"Today is {date_str} and the time now is {time_str}."
+
+    # Just today's date
     if "today" in q and "date" in q:
-        return now.strftime("Today is %d %B %Y.")
+        return f"Today is {date_str}."
+
+    # Day of week
     if "what day is today" in q or "which day is today" in q:
-        return now.strftime("Today is %A.")
+        return f"Today is {now.strftime('%A')}."
+
+    # Just time
     if "what is the time" in q or "current time" in q or "time now" in q:
-        return now.strftime("The time now is %I:%M %p.")
+        return f"The time now is {time_str}."
+
     return None
 
 
@@ -1419,12 +1432,17 @@ else:
                 reply_text = "I couldn't reach AI right now, but I'm here with you."
                 api_key = OPENAI_API_KEY
 
-                today_str = now_local().strftime("%d %B %Y")
+                now_dt = now_local()
+                date_str = now_dt.strftime("%A, %d %B %Y")   # e.g. Friday, 21 November 2025
+                time_str = now_dt.strftime("%I:%M %p")       # e.g. 02:30 PM
+
                 system_msg = (
                     "You are a gentle assistant for an Alzheimer's patient. "
-                    "Reply in 2–3 short, simple sentences. Be friendly. "
-                    f"Today's date (IST) is {today_str}. If the user asks about today's date or time, "
-                    f"use {today_str} as the current date."
+                    "Reply in 2–3 short, simple sentences. Be friendly and reassuring. "
+                    f"The current local date/time (IST) is: {date_str}, {time_str}. "
+                    "Whenever the user asks about today's date or the current time, "
+                    f"you must use {date_str} as the date and {time_str} as the time. "
+                    "Do not say that the time is unknown or not set; if needed, repeat the same time again."
                 )
 
                 if api_key:
