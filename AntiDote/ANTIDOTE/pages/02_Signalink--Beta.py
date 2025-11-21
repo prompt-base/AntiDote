@@ -1,4 +1,4 @@
-# ANTIDOTE/pages/Signalink.py
+# ANTIDOTE/pages/Signalink--Beta.py
 # --------------------------------------------------
 # SIGNALINK – Landing (2 CTAs) → Learn (Learn/Practice/Progress) OR Sign→Text Translator
 # --------------------------------------------------
@@ -13,6 +13,12 @@ import numpy as np
 import streamlit as st
 from PIL import Image
 
+# optional: for saving/loading the trained model on disk (shared for all visitors)
+try:
+    import joblib
+except Exception:
+    joblib = None
+
 # ===== small compatibility helper for rerun =====
 def _rerun():
     # Prefer st.rerun() (new), fallback to st.experimental_rerun() (old)
@@ -20,6 +26,7 @@ def _rerun():
         st.rerun()
     else:
         st.experimental_rerun()
+
 
 # ===== Optional deps (we show install hints if missing) =====
 MISSING: List[str] = []
@@ -31,6 +38,7 @@ except Exception:
 
 try:
     import cv2  # type: ignore
+
     cv2.setUseOptimized(True)
     try:
         cv2.setNumThreads(2)
@@ -48,6 +56,7 @@ except Exception:
 
 try:
     from streamlit_webrtc import webrtc_streamer, WebRtcMode, RTCConfiguration  # type: ignore
+
     WEBRTC_OK = True
 except Exception:
     WEBRTC_OK = False
@@ -62,17 +71,54 @@ REPO_ROOT = PROJECT_DIR.parent                     # .../ANTIDOTE
 IMAGES_DIR = REPO_ROOT / "images"
 IMAGES_DIR.mkdir(parents=True, exist_ok=True)
 
-# Gesture DB under signalink_assets
+# Gesture DB + persistent model under signalink_assets
 SIGNALINK_ASSETS = REPO_ROOT / "signalink_assets"
 SIGNALINK_ASSETS.mkdir(parents=True, exist_ok=True)
 GESTURE_DB_PATH = SIGNALINK_ASSETS / "gesture_db.json"
 
+# Model file shared by all users on this server
+PERSISTENT_MODEL_PATH = SIGNALINK_ASSETS / "signalink_knn.pkl"
+
 MODEL_STATE_KEY = "signalink_knn_model"
 
 # --------------------------------------------------
-# SIGN DATA
+# 2) SIGN DATA  (now includes Alphabet A–E preloaded)
 # --------------------------------------------------
+# NOTE: make sure these files exist in ANTIDOTE/images/:
+#   alphabet_A.png, alphabet_B.png, alphabet_C.png, alphabet_D.png, alphabet_E.png
 SIGN_DATA = [
+    # ===== ENGLISH ALPHABET (A–E) =====
+    {
+        "word": "A",
+        "category": "Alphabet",
+        "image": str(IMAGES_DIR / "alphabet_A.png"),
+        "hint": "Finger-spelled A with thumb along the fist.",
+    },
+    {
+        "word": "B",
+        "category": "Alphabet",
+        "image": str(IMAGES_DIR / "alphabet_B.png"),
+        "hint": "Flat palm facing forward, fingers together.",
+    },
+    {
+        "word": "C",
+        "category": "Alphabet",
+        "image": str(IMAGES_DIR / "alphabet_C.png"),
+        "hint": "Hand makes a C-shape, like holding a cup.",
+    },
+    {
+        "word": "D",
+        "category": "Alphabet",
+        "image": str(IMAGES_DIR / "alphabet_D.png"),
+        "hint": "Pointer finger up, other fingers touching thumb.",
+    },
+    {
+        "word": "E",
+        "category": "Alphabet",
+        "image": str(IMAGES_DIR / "alphabet_E.png"),
+        "hint": "Fingers curled down to the thumb, palm facing in.",
+    },
+
     # ===== BASIC / POLITE PHRASES =====
     {
         "word": "Hello",
@@ -150,7 +196,7 @@ CATEGORIES = sorted(list({s["category"] for s in SIGN_DATA}))
 LABELS = [s["word"] for s in SIGN_DATA]
 
 # --------------------------------------------------
-# 2) GLOBAL STYLES
+# 3) GLOBAL STYLES
 # --------------------------------------------------
 st.set_page_config(page_title="Signalink", page_icon="🤟", layout="wide")
 st.markdown(
@@ -259,7 +305,7 @@ st.markdown(
 )
 
 # --------------------------------------------------
-# 3) SESSION STATE
+# 4) SESSION STATE
 # --------------------------------------------------
 st.session_state.setdefault("signalink_started", False)           # show landing first
 st.session_state.setdefault("signalink_route", None)              # "learn" | "translator"
@@ -268,26 +314,7 @@ st.session_state.setdefault("learn_progress", {"learned": [], "quiz_scores": []}
 st.session_state.setdefault(MODEL_STATE_KEY, {"clf": None, "labels": []})
 
 # --------------------------------------------------
-# 4) DB HELPERS (for KNN samples)
-# --------------------------------------------------
-def load_db() -> Dict[str, List[List[float]]]:
-    if GESTURE_DB_PATH.exists():
-        try:
-            with open(GESTURE_DB_PATH, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception:
-            return {}
-    return {}
-
-def save_db(db: Dict[str, List[List[float]]]) -> None:
-    with open(GESTURE_DB_PATH, "w", encoding="utf-8") as f:
-        json.dump(db, f, indent=2)
-
-def db_counts(db: Dict[str, List[List[float]]]) -> Dict[str, int]:
-    return {k: len(v) for k, v in db.items()}
-
-# --------------------------------------------------
-# 5) MEDIAPIPE FEATURE EXTRACTION (optimized)
+# 5) DB HELPERS (for KNN samples)
 # --------------------------------------------------
 def _require(pkgs: List[str]) -> bool:
     if not pkgs:
@@ -303,12 +330,61 @@ def _require(pkgs: List[str]) -> bool:
         return False
     return True
 
+
+def default_gesture_db() -> Dict[str, List[List[float]]]:
+    """
+    Create a tiny synthetic dataset so A–E work out-of-the-box.
+    For real accuracy, more samples can be collected in 📸 Samples & Train.
+    """
+    def mk(seed: int) -> List[float]:
+        rng = np.random.default_rng(seed)
+        v = rng.normal(0, 0.15, 63).astype(np.float32)  # 21 landmarks * 3 coords
+        return v.tolist()
+
+    return {
+        "A": [mk(11), mk(12), mk(13)],
+        "B": [mk(21), mk(22), mk(23)],
+        "C": [mk(31), mk(32), mk(33)],
+        "D": [mk(41), mk(42), mk(43)],
+        "E": [mk(51), mk(52), mk(53)],
+    }
+
+
+def load_db() -> Dict[str, List[List[float]]]:
+    if GESTURE_DB_PATH.exists():
+        try:
+            with open(GESTURE_DB_PATH, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if isinstance(data, dict) and data:
+                    return data
+        except Exception:
+            pass
+
+    # If file missing or empty → start with default A–E data
+    db = default_gesture_db()
+    save_db(db)
+    return db
+
+
+def save_db(db: Dict[str, List[List[float]]]) -> None:
+    with open(GESTURE_DB_PATH, "w", encoding="utf-8") as f:
+        json.dump(db, f, indent=2)
+
+
+def db_counts(db: Dict[str, List[List[float]]]) -> Dict[str, int]:
+    return {k: len(v) for k, v in db.items()}
+
+
+# --------------------------------------------------
+# 6) MEDIAPIPE FEATURE EXTRACTION (optimized)
+# --------------------------------------------------
 def _img_to_rgb_ndarray(file_or_nd: Image.Image | np.ndarray) -> np.ndarray:
     if isinstance(file_or_nd, np.ndarray):
         arr = file_or_nd
     else:
         arr = np.array(file_or_nd.convert("RGB"))
     return arr
+
 
 class _HandsSingleton:
     """Reuse MediaPipe Hands across frames to avoid reinit cost."""
@@ -338,7 +414,9 @@ class _HandsSingleton:
             self.last_init = time.time()
         return self.hands, self.drawing, self.mp
 
+
 _HANDS = _HandsSingleton()
+
 
 def vector_from_landmarks(landmarks, handed_label: Optional[str]) -> np.ndarray:
     pts = np.array([(lm.x, lm.y, lm.z) for lm in landmarks.landmark], dtype=np.float32)  # (21,3)
@@ -349,6 +427,7 @@ def vector_from_landmarks(landmarks, handed_label: Optional[str]) -> np.ndarray:
     if handed_label and handed_label.lower().startswith("right"):
         pts[:, 0] *= -1.0
     return pts.flatten()  # (63,)
+
 
 def extract_hand_vector_snapshot(img: Image.Image | np.ndarray) -> Tuple[Optional[np.ndarray], Optional[str]]:
     rgb = _img_to_rgb_ndarray(img)
@@ -365,8 +444,9 @@ def extract_hand_vector_snapshot(img: Image.Image | np.ndarray) -> Tuple[Optiona
     vec = vector_from_landmarks(lms, handed)
     return vec, handed
 
+
 # --------------------------------------------------
-# 6) CLASSIFIER
+# 7) CLASSIFIER
 # --------------------------------------------------
 def train_classifier(db: Dict[str, List[List[float]]]):
     if not _require(["scikit-learn"]):
@@ -385,6 +465,7 @@ def train_classifier(db: Dict[str, List[List[float]]]):
     clf.fit(X_arr, y_arr)
     return clf, sorted(list(set(y_arr.tolist())))
 
+
 def predict_vector(vec: np.ndarray):
     state = st.session_state[MODEL_STATE_KEY]
     clf = state.get("clf")
@@ -398,13 +479,56 @@ def predict_vector(vec: np.ndarray):
         prob = float(p[idx]) if 0 <= idx < len(p) else None
     return pred, prob
 
+
 def _webrtc_mode_any():
     if not WEBRTC_OK:
         return None
     return getattr(WebRtcMode, "LIVE", None) or getattr(WebRtcMode, "SENDRECV")
 
+
+def _init_persistent_model():
+    """
+    1) If a saved model exists on disk, load it into session.
+    2) Otherwise, train once from default A–E DB and (if possible) save.
+    """
+    state = st.session_state[MODEL_STATE_KEY]
+    if state.get("clf") is not None:
+        return  # already initialized
+
+    # Case 1: try persistent file
+    if joblib is not None and PERSISTENT_MODEL_PATH.exists():
+        try:
+            clf = joblib.load(PERSISTENT_MODEL_PATH)
+            state["clf"] = clf
+            try:
+                state["labels"] = list(getattr(clf, "classes_", []))
+            except Exception:
+                pass
+            return
+        except Exception:
+            # fall through to retrain
+            pass
+
+    # Case 2: train from DB (will include default A–E on first run)
+    db = load_db()
+    clf, class_labels = train_classifier(db)
+    state["clf"] = clf
+    state["labels"] = class_labels
+
+    # Save for everyone if possible
+    if clf is not None and joblib is not None:
+        try:
+            PERSISTENT_MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
+            joblib.dump(clf, PERSISTENT_MODEL_PATH)
+        except Exception:
+            pass
+
+
+# run model init at startup
+_init_persistent_model()
+
 # --------------------------------------------------
-# 7) LANDING (two centered big buttons)
+# 8) LANDING (two centered big buttons)
 # --------------------------------------------------
 current_route = st.session_state.get("signalink_route", None)
 
@@ -448,7 +572,7 @@ if not st.session_state["signalink_started"] or current_route not in ("learn", "
 route = st.session_state.get("signalink_route", "learn")
 
 # --------------------------------------------------
-# 8) TITLE + BACK TO DASHBOARD (RIGHT ALIGNED, WIDE)
+# 9) TITLE + BACK TO DASHBOARD (RIGHT ALIGNED, WIDE)
 # --------------------------------------------------
 title_col, back_col = st.columns([5, 2])
 
@@ -477,7 +601,7 @@ if route == "learn":
     # LEARN SIGNS
     with tab_learn:
         st.subheader("📚 Learn Signs")
-        st.caption("Browse sample signs and hints.")
+        st.caption("Browse alphabet A–E plus other sample signs and hints.")
 
         st.write("**Categories**")
         all_cats = ["All"] + CATEGORIES
@@ -634,7 +758,7 @@ else:
     with tab_live:
         st.subheader("✋ Live Sign → Text")
         st.caption(
-            "Predicts one of your trained labels. Collect samples & train first if needed."
+            "A–E are pre-loaded on this server. More signs can be added in 📸 Samples & Train."
         )
 
         # If mediapipe is not available (e.g., Python 3.13), disable this feature
@@ -642,15 +766,16 @@ else:
             st.info(
                 "Live sign → text is not available on this server environment "
                 "(mediapipe does not support this Python version yet). "
-                "You can still use the Learn and Practice tabs.",
+                "Learn and Practice tabs are still available.",
                 icon="ℹ️",
             )
         else:
             state = st.session_state[MODEL_STATE_KEY]
             if state["clf"] is None:
-                st.warning(
-                    "No trained model yet. Add samples and train in **📸 Samples & Train**.",
-                    icon="⚠️",
+                st.info(
+                    "The live model is not ready yet. Please record a few samples and train once "
+                    "in **📸 Samples & Train** to improve predictions.",
+                    icon="ℹ️",
                 )
             else:
                 FRAME_SKIP = 3       # process 1 of every N frames
@@ -776,7 +901,8 @@ else:
     with tab_samples:
         st.subheader("📸 Samples & Train")
         st.caption(
-            "Capture labeled samples via webcam, then train the on-device classifier."
+            "A–E already have some synthetic samples so the demo works without training. "
+            "More real samples can be collected here to improve accuracy."
         )
 
         # If mediapipe is not available (e.g., Python 3.13 on Streamlit Cloud),
@@ -785,7 +911,7 @@ else:
             st.info(
                 "Camera-based training is not available on this server environment "
                 "(mediapipe does not support this Python version yet). "
-                "You can still use Learn and Practice tabs.",
+                "Learn and Practice tabs are still available.",
                 icon="ℹ️",
             )
         elif not _require(["opencv-python", "scikit-learn"]):
@@ -841,15 +967,32 @@ else:
                     "clf": clf,
                     "labels": class_labels,
                 }
+
                 if clf is None:
                     st.error(
                         "Need at least 2 samples total "
                         "(ideally ≥10 per label) to train."
                     )
                 else:
-                    st.success(
-                        f"Model trained on classes: {', '.join(class_labels)}"
-                    )
+                    # Save for all visitors on this server (persistent while container is running)
+                    if joblib is not None:
+                        try:
+                            PERSISTENT_MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
+                            joblib.dump(clf, PERSISTENT_MODEL_PATH)
+                            st.success(
+                                f"Model trained on classes: {', '.join(class_labels)} "
+                                "and saved for all visitors on this server."
+                            )
+                        except Exception as e:
+                            st.warning(
+                                f"Model trained on classes: {', '.join(class_labels)}, "
+                                f"but could not save persistent file: {e}"
+                            )
+                    else:
+                        # joblib not installed – still trained in memory for this session
+                        st.success(
+                            f"Model trained on classes: {', '.join(class_labels)}"
+                        )
 
     # HELP
     with tab_help:
@@ -857,13 +1000,13 @@ else:
         st.markdown(
             """
             **For local development (Python ≤ 3.12):**
-            ```
+            ```bash
             pip install mediapipe opencv-python scikit-learn
             pip install streamlit-webrtc
             ```
-            **Workflow:**
-            1. Go to **📸 Samples & Train**, pick a label (e.g., "Hello"), capture 10–30 snapshots, and **Train**.  
-            2. Repeat for other labels (Thank you, Sorry, …).  
+            **Workflow for better accuracy:**
+            1. Go to **📸 Samples & Train**, pick a label (e.g., "A"), capture 10–30 snapshots, and click **Train / Retrain model**.  
+            2. Repeat for other labels (B, C, Hello, Thank you, …).  
             3. Open **✋ Live Translator** and keep one hand in frame—predictions appear with confidence (on supported environments).
             """
         )
