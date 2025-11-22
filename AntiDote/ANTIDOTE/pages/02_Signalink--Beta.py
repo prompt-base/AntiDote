@@ -1020,16 +1020,17 @@ else:
         st.subheader("ℹ️ Help")
         st.markdown(
             """
-            **For local development (Python ≤ 3.12):**
-            ```bash
-            pip install mediapipe opencv-python scikit-learn
-            pip install streamlit-webrtc joblib
-            ```
+            **How this demo works**
+
+            - The app uses a camera frame to detect a hand using AI (MediaPipe Hands).  
+            - Each detected hand is converted into a **63-number feature vector** (21 landmarks × 3D coordinates).  
+            - These vectors are stored as samples for each sign (A, B, C, Hello, etc.).  
+            - A **K-Nearest Neighbors (KNN)** model learns from these samples and then predicts the closest sign in live mode.
 
             **Workflow for better accuracy:**
 
-            1. Go to **📸 Samples & Train**, pick a sign (for example, "A"), capture 10–30 snapshots, and click **Train / Retrain model**.  
-            2. Repeat for other signs (B, C, Hello, Thank you, …).  
-            3. Open **✋ Live Translator** and show one hand sign to the camera—predictions appear with confidence (on supported environments).
+            1. Open **📸 Samples & Train**, pick a sign (for example, "A"), capture 10–30 snapshots, and click **Train / Retrain model**.  
+            2. Repeat for other signs (B, C, Hello, Thank you, …) so the model sees different angles and lighting.  
+            3. Go to **✋ Live Translator**, show a single hand sign to the camera, and watch the predicted sign and confidence appear on the video.
             """
         )
