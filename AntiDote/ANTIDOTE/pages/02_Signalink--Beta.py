@@ -1,6 +1,6 @@
 # ANTIDOTE/pages/Signalink--Beta.py
 # --------------------------------------------------
-# SIGNALINK – Landing (2 CTAs) → Learn (Learn/Practice/Progress) OR Sign→Text Translator
+# SIGNALINK – Learn (Learn/Practice/Progress) OR Sign → Text Translator (Snapshot)
 # --------------------------------------------------
 import os
 import json
@@ -21,7 +21,6 @@ except Exception:
 
 # ===== small compatibility helper for rerun =====
 def _rerun():
-    # Prefer st.rerun() (new), fallback to st.experimental_rerun() (old)
     if hasattr(st, "rerun"):
         st.rerun()
     else:
@@ -38,7 +37,6 @@ except Exception:
 
 try:
     import cv2  # type: ignore
-
     cv2.setUseOptimized(True)
     try:
         cv2.setNumThreads(2)
@@ -54,40 +52,27 @@ except Exception:
     KNeighborsClassifier = None
     MISSING.append("scikit-learn")
 
-try:
-    from streamlit_webrtc import webrtc_streamer, WebRtcMode, RTCConfiguration  # type: ignore
-
-    WEBRTC_OK = True
-except Exception:
-    WEBRTC_OK = False
-
 # --------------------------------------------------
 # 1) PATHS / ASSETS
 # --------------------------------------------------
-PROJECT_DIR = Path(__file__).resolve().parent      # .../ANTIDOTE/pages
-REPO_ROOT = PROJECT_DIR.parent                     # .../ANTIDOTE
+PROJECT_DIR = Path(__file__).resolve().parent
+REPO_ROOT = PROJECT_DIR.parent
 
-# All sign images live in: AntiDote/ANTIDOTE/images/
 IMAGES_DIR = REPO_ROOT / "images"
 IMAGES_DIR.mkdir(parents=True, exist_ok=True)
 
-# Gesture DB + persistent model under signalink_assets
 SIGNALINK_ASSETS = REPO_ROOT / "signalink_assets"
 SIGNALINK_ASSETS.mkdir(parents=True, exist_ok=True)
 GESTURE_DB_PATH = SIGNALINK_ASSETS / "gesture_db.json"
-
-# Model file shared by all users on this server
 PERSISTENT_MODEL_PATH = SIGNALINK_ASSETS / "signalink_knn.pkl"
 
 MODEL_STATE_KEY = "signalink_knn_model"
 
 # --------------------------------------------------
-# 2) SIGN DATA  (now includes Alphabet A–E preloaded)
+# 2) SIGN DATA (includes Alphabet A–E)
 # --------------------------------------------------
-# NOTE: make sure these files exist in ANTIDOTE/images/:
-#   alphabet_A.png, alphabet_B.png, alphabet_C.png, alphabet_D.png, alphabet_E.png
 SIGN_DATA = [
-    # ===== ENGLISH ALPHABET (A–E) =====
+    # Alphabet A–E
     {
         "word": "A",
         "category": "Alphabet",
@@ -119,7 +104,7 @@ SIGN_DATA = [
         "hint": "Fingers curled down to the thumb, palm facing in.",
     },
 
-    # ===== BASIC / POLITE PHRASES =====
+    # Basic polite phrases
     {
         "word": "Hello",
         "category": "Basic",
@@ -157,7 +142,7 @@ SIGN_DATA = [
         "hint": "From chin outward.",
     },
 
-    # ===== DAILY ACTIONS =====
+    # Daily action
     {
         "word": "Eat",
         "category": "Daily",
@@ -165,7 +150,7 @@ SIGN_DATA = [
         "hint": "Fingertips move toward mouth.",
     },
 
-    # ===== PEOPLE / FAMILY =====
+    # People / family
     {
         "word": "Mother",
         "category": "People",
@@ -211,7 +196,6 @@ st.markdown(
     h1,h2,h3,h4 { color: #fff !important; }
     img { border-radius: 12px; }
 
-    /* Reusable big CTA buttons */
     .cta .stButton>button {
       width: 100%;
       padding: 22px 28px;
@@ -241,7 +225,6 @@ st.markdown(
       filter: brightness(0.98);
     }
 
-    /* Card look for all Streamlit images (sign cards) */
     div[data-testid="stImage"] {
       background: rgba(3,16,22,.45);
       border: 1px solid rgba(255,255,255,.08);
@@ -251,7 +234,6 @@ st.markdown(
       box-shadow: 0 10px 30px rgba(0,0,0,.25);
     }
 
-    /* Make all sign images uniform */
     div[data-testid="stImage"] img {
       width: 100% !important;
       height: 190px !important;
@@ -261,7 +243,6 @@ st.markdown(
       padding: 6px;
     }
 
-    /* Tabs text color tweaks */
     div.stTabs [data-baseweb="tab"] {
       color: #ffffff !important;
       font-weight: 500;
@@ -270,7 +251,6 @@ st.markdown(
       color: #ff4b4b !important;
     }
 
-    /* Button text color overrides (these selectors may change with Streamlit updates) */
     .st-emotion-cache-12j140x.et2rgd20 p{
       color:#0b1220;
     }
@@ -281,7 +261,6 @@ st.markdown(
       color:#ffffff;
     }
 
-    /* NEXT button style on Practice tab */
     .next-btn .stButton>button {
       background: linear-gradient(135deg, #f59e0b, #ec4899);
       color: #0b1220;
@@ -307,14 +286,14 @@ st.markdown(
 # --------------------------------------------------
 # 4) SESSION STATE
 # --------------------------------------------------
-st.session_state.setdefault("signalink_started", False)           # show landing first
-st.session_state.setdefault("signalink_route", None)              # "learn" | "translator"
+st.session_state.setdefault("signalink_started", False)
+st.session_state.setdefault("signalink_route", None)  # "learn" | "translator"
 st.session_state.setdefault("signalink_cat", "All")
 st.session_state.setdefault("learn_progress", {"learned": [], "quiz_scores": []})
 st.session_state.setdefault(MODEL_STATE_KEY, {"clf": None, "labels": []})
 
 # --------------------------------------------------
-# 5) DB HELPERS (for KNN samples)
+# 5) DB HELPERS
 # --------------------------------------------------
 def _require(pkgs: List[str]) -> bool:
     if not pkgs:
@@ -332,13 +311,9 @@ def _require(pkgs: List[str]) -> bool:
 
 
 def default_gesture_db() -> Dict[str, List[List[float]]]:
-    """
-    Create a tiny synthetic dataset so A–E work out-of-the-box.
-    For real accuracy, more samples can be collected in 📸 Samples & Train.
-    """
     def mk(seed: int) -> List[float]:
         rng = np.random.default_rng(seed)
-        v = rng.normal(0, 0.15, 63).astype(np.float32)  # 21 landmarks * 3 coords
+        v = rng.normal(0, 0.15, 63).astype(np.float32)
         return v.tolist()
 
     return {
@@ -359,8 +334,6 @@ def load_db() -> Dict[str, List[List[float]]]:
                     return data
         except Exception:
             pass
-
-    # If file missing or empty → start with default A–E data
     db = default_gesture_db()
     save_db(db)
     return db
@@ -374,21 +347,16 @@ def save_db(db: Dict[str, List[List[float]]]) -> None:
 def db_counts(db: Dict[str, List[List[float]]]) -> Dict[str, int]:
     return {k: len(v) for k, v in db.items()}
 
-
 # --------------------------------------------------
-# 6) MEDIAPIPE FEATURE EXTRACTION (optimized)
+# 6) MEDIAPIPE FEATURE EXTRACTION
 # --------------------------------------------------
 def _img_to_rgb_ndarray(file_or_nd: Image.Image | np.ndarray) -> np.ndarray:
     if isinstance(file_or_nd, np.ndarray):
-        arr = file_or_nd
-    else:
-        arr = np.array(file_or_nd.convert("RGB"))
-    return arr
+        return file_or_nd
+    return np.array(file_or_nd.convert("RGB"))
 
 
 class _HandsSingleton:
-    """Reuse MediaPipe Hands across frames to avoid reinit cost."""
-
     def __init__(self):
         self.hands = None
         self.last_init = 0.0
@@ -396,13 +364,10 @@ class _HandsSingleton:
         self.mp = None
 
     def get(self):
-        # If mediapipe is not available in this environment, just disable hands.
         if mp is None:
             return None, None, None
-
         if self.hands is None or (time.time() - self.last_init) > 600:
             import mediapipe as _mp
-
             self.mp = _mp
             self.hands = _mp.solutions.hands.Hands(
                 model_complexity=0,
@@ -419,14 +384,14 @@ _HANDS = _HandsSingleton()
 
 
 def vector_from_landmarks(landmarks, handed_label: Optional[str]) -> np.ndarray:
-    pts = np.array([(lm.x, lm.y, lm.z) for lm in landmarks.landmark], dtype=np.float32)  # (21,3)
+    pts = np.array([(lm.x, lm.y, lm.z) for lm in landmarks.landmark], dtype=np.float32)
     origin = pts[0].copy()
     pts -= origin
     scale = float(np.linalg.norm(pts[9])) or 1.0
     pts /= scale
     if handed_label and handed_label.lower().startswith("right"):
         pts[:, 0] *= -1.0
-    return pts.flatten()  # (63,)
+    return pts.flatten()
 
 
 def extract_hand_vector_snapshot(img: Image.Image | np.ndarray) -> Tuple[Optional[np.ndarray], Optional[str]]:
@@ -443,7 +408,6 @@ def extract_hand_vector_snapshot(img: Image.Image | np.ndarray) -> Tuple[Optiona
         handed = res.multi_handedness[0].classification[0].label
     vec = vector_from_landmarks(lms, handed)
     return vec, handed
-
 
 # --------------------------------------------------
 # 7) CLASSIFIER
@@ -480,22 +444,12 @@ def predict_vector(vec: np.ndarray):
     return pred, prob
 
 
-def _webrtc_mode_any():
-    if not WEBRTC_OK:
-        return None
-    return getattr(WebRtcMode, "LIVE", None) or getattr(WebRtcMode, "SENDRECV")
-
-
 def _init_persistent_model():
-    """
-    1) If a saved model exists on disk, load it into session.
-    2) Otherwise, train once from default A–E DB and (if possible) save.
-    """
     state = st.session_state[MODEL_STATE_KEY]
     if state.get("clf") is not None:
-        return  # already initialized
+        return
 
-    # Case 1: try persistent file
+    # Try load saved model
     if joblib is not None and PERSISTENT_MODEL_PATH.exists():
         try:
             clf = joblib.load(PERSISTENT_MODEL_PATH)
@@ -506,16 +460,14 @@ def _init_persistent_model():
                 pass
             return
         except Exception:
-            # fall through to retrain
             pass
 
-    # Case 2: train from DB (will include default A–E on first run)
+    # Train from DB (includes default A–E on first run)
     db = load_db()
     clf, class_labels = train_classifier(db)
     state["clf"] = clf
     state["labels"] = class_labels
 
-    # Save for everyone if possible
     if clf is not None and joblib is not None:
         try:
             PERSISTENT_MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -524,15 +476,13 @@ def _init_persistent_model():
             pass
 
 
-# run model init at startup
 _init_persistent_model()
 
 # --------------------------------------------------
-# 8) LANDING (two centered big buttons)
+# 8) LANDING (two big buttons)
 # --------------------------------------------------
 current_route = st.session_state.get("signalink_route", None)
 
-# If we have not started yet, or route is invalid, show the landing dashboard
 if not st.session_state["signalink_started"] or current_route not in ("learn", "translator"):
     st.markdown(
         "<h1 style='text-align:center; margin-top:10px;'>🤟 SIGNALINK</h1>",
@@ -540,17 +490,15 @@ if not st.session_state["signalink_started"] or current_route not in ("learn", "
     )
     st.markdown(
         "<p style='text-align:center; font-size:1.05rem; opacity:0.9;'>"
-        "Learn signs step by step, or try the live Sign → Text translator."
+        "Learn sign language basics, or try the Sign → Text translator."
         "</p>",
         unsafe_allow_html=True,
     )
 
-    # Centered two-CTA layout: [spacer] [buttons block] [spacer]
-    left_spacer, center_block, right_spacer = st.columns([1, 2, 1])
+    l, center_block, r = st.columns([1, 2, 1])
     with center_block:
-        btn_col1, btn_col2 = st.columns(2)
-
-        with btn_col1:
+        c1, c2 = st.columns(2)
+        with c1:
             st.markdown('<div class="cta learn">', unsafe_allow_html=True)
             if st.button("📚 Learn Signs", key="cta_learn", use_container_width=True):
                 st.session_state["signalink_started"] = True
@@ -558,9 +506,9 @@ if not st.session_state["signalink_started"] or current_route not in ("learn", "
                 _rerun()
             st.markdown("</div>", unsafe_allow_html=True)
 
-        with btn_col2:
+        with c2:
             st.markdown('<div class="cta signtext">', unsafe_allow_html=True)
-            if st.button("✋ Sign to Text Translator", key="cta_translator", use_container_width=True):
+            if st.button("✋ Sign to Text (Snapshot)", key="cta_translator", use_container_width=True):
                 st.session_state["signalink_started"] = True
                 st.session_state["signalink_route"] = "translator"
                 _rerun()
@@ -568,37 +516,30 @@ if not st.session_state["signalink_started"] or current_route not in ("learn", "
 
     st.stop()
 
-# From here on, we know we are in an inner route
 route = st.session_state.get("signalink_route", "learn")
 
 # --------------------------------------------------
-# 9) TITLE + BACK TO DASHBOARD (RIGHT ALIGNED, WIDE)
+# 9) TITLE + BACK
 # --------------------------------------------------
 title_col, back_col = st.columns([5, 2])
-
 with title_col:
     st.title("🤟 SIGNALINK")
-
 with back_col:
     st.markdown("<div style='height: 0.8rem'></div>", unsafe_allow_html=True)
-    back_clicked = st.button(
-        "⬅️ Back to Dashboard",
-        key="btn_back_dashboard",
-        use_container_width=True,
-    )
-    if back_clicked:
+    if st.button("⬅️ Back to Dashboard", key="btn_back_dashboard", use_container_width=True):
         st.session_state["signalink_started"] = False
         st.session_state["signalink_route"] = None
         _rerun()
 
-# -------------- LEARN ROUTE --------------
+# --------------------------------------------------
+# 10) LEARN ROUTE
+# --------------------------------------------------
 if route == "learn":
-    # Tabs: Learn Signs | Practice | Progress
     tab_learn, tab_practice, tab_progress = st.tabs(
         ["📚 Learn Signs", "🧪 Practice", "📊 Progress"]
     )
 
-    # LEARN SIGNS
+    # LEARN
     with tab_learn:
         st.subheader("📚 Learn Signs")
         st.caption("Browse alphabet A–E plus other sample signs and hints.")
@@ -615,19 +556,14 @@ if route == "learn":
                 _rerun()
 
         cat = st.session_state.get("signalink_cat", "All")
-        filtered = (
-            SIGN_DATA
-            if cat == "All"
-            else [s for s in SIGN_DATA if s["category"] == cat]
-        )
+        filtered = SIGN_DATA if cat == "All" else [s for s in SIGN_DATA if s["category"] == cat]
 
         cols = st.columns(3)
         for i, sign in enumerate(filtered):
             with cols[i % 3]:
                 img_path = sign["image"]
                 st.image(
-                    img_path
-                    if (img_path and os.path.exists(img_path))
+                    img_path if (img_path and os.path.exists(img_path))
                     else "https://via.placeholder.com/300x180?text=SIGN",
                     use_container_width=True,
                 )
@@ -645,7 +581,6 @@ if route == "learn":
         st.subheader("🧪 Practice")
         st.caption("Tap the correct word for this sign.")
 
-        # Initial state for practice flow
         if "practice_idx" not in st.session_state:
             st.session_state.practice_idx = 0
             st.session_state.practice_order = list(range(len(SIGN_DATA)))
@@ -657,7 +592,6 @@ if route == "learn":
         ]
         item = SIGN_DATA[idx]
 
-        # Show the sign image
         st.image(
             item["image"]
             if os.path.exists(item["image"])
@@ -665,12 +599,10 @@ if route == "learn":
             use_container_width=False,
         )
 
-        # Prepare / reuse options for this question
         if (
             "practice_options" not in st.session_state
             or st.session_state.practice_options.get("target") != item["word"]
         ):
-            # Build 1 correct + up to 2 random wrong options -> total 3 or fewer
             other_words = [w for w in LABELS if w != item["word"]]
             num_wrong = min(2, len(other_words))
             wrong = random.sample(other_words, k=num_wrong) if num_wrong > 0 else []
@@ -686,7 +618,6 @@ if route == "learn":
 
         st.write("Choose the correct word:")
 
-        # Render options as buttons (in one row, up to 3 columns)
         num_cols = max(1, min(3, len(options)))
         opt_cols = st.columns(num_cols)
         for i, opt in enumerate(options):
@@ -705,7 +636,6 @@ if route == "learn":
                         {"word": item["word"], "correct": is_correct}
                     )
 
-        # Show feedback if available for this question
         fb = st.session_state.get("practice_feedback")
         if fb and fb.get("word") == item["word"]:
             if fb["correct"]:
@@ -713,7 +643,6 @@ if route == "learn":
             else:
                 st.error(f"❌ Incorrect. It was **{item['word']}**")
 
-        # Centered NEXT button with custom color
         spacer_l, center_next, spacer_r = st.columns([4, 1, 4])
         with center_next:
             st.markdown("<div class='next-btn'>", unsafe_allow_html=True)
@@ -747,160 +676,79 @@ if route == "learn":
                 status = "✅" if s["correct"] else "❌"
                 st.write(f"{status} – {s['word']}")
 
-# -------------- TRANSLATOR ROUTE --------------
+# --------------------------------------------------
+# 11) TRANSLATOR ROUTE – SNAPSHOT VERSION
+# --------------------------------------------------
 else:
-    # Tabs: Live Translator | Samples & Train | Help
     tab_live, tab_samples, tab_help = st.tabs(
-        ["✋ Live Translator", "📸 Samples & Train", "ℹ️ Help"]
+        ["✋ Sign → Text (Snapshot)", "📸 Samples & Train", "ℹ️ Help"]
     )
 
-    # LIVE TRANSLATOR
+    # LIVE (SNAPSHOT) TRANSLATOR
     with tab_live:
-        st.subheader("✋ Live Sign → Text")
-        st.caption(
-            "A–E are pre-loaded on this server. More signs can be added in 📸 Samples & Train."
-        )
+        st.subheader("✋ Sign → Text (Snapshot)")
+        st.caption("Take a photo of a hand sign. The AI will guess the matching label.")
+
         st.markdown(
-            "- Hold **one hand** clearly in front of the camera.\n"
-            "- Try not to cover the hand with your face.\n"
-            "- Keep the hand steady for a moment so the model can read it.",
+            """
+            **How to use this demo:**
+            - Hold **one hand** in front of the camera in a clear sign shape.  
+            - Try not to cover the hand with the face or other objects.  
+            - Use normal lighting (not too dark, not too bright).  
+            - Press **Take snapshot**, then **Predict sign**.
+            """
         )
 
-        # If mediapipe is not available (e.g., Python 3.13), disable this feature
         if mp is None:
             st.info(
-                "Live sign → text is not available on this server environment "
-                "(mediapipe does not support this Python version yet). "
-                "Learn and Practice tabs are still available.",
+                "Hand detection is not available in this environment "
+                "(mediapipe is missing). Only Learn and Practice tabs will work.",
                 icon="ℹ️",
             )
         else:
             state = st.session_state[MODEL_STATE_KEY]
-            if state["clf"] is None:
+            clf = state.get("clf")
+            if clf is None:
                 st.info(
-                    "The live model is not ready yet. Please record a few samples and train once "
-                    "in **📸 Samples & Train** to improve predictions.",
+                    "The sign classifier is not ready yet. "
+                    "Please record some samples and train once in **📸 Samples & Train** "
+                    "to improve sign recognition.",
                     icon="ℹ️",
                 )
             else:
-                FRAME_SKIP = 3       # process 1 of every N frames
-                INFER_W = 320
-                _last = {"n": 0}
+                snap = st.camera_input("Take a snapshot of the hand sign")
 
-                def _resize_keep_aspect(img_bgr, target_w):
-                    h, w = img_bgr.shape[:2]
-                    if w <= target_w:
-                        return img_bgr
-                    sc = target_w / float(w)
-                    nh = int(h * sc)
-                    return cv2.resize(
-                        img_bgr,
-                        (target_w, nh),
-                        interpolation=cv2.INTER_AREA,
-                    )
+                pred_text = None
+                conf_text = None
 
-                if WEBRTC_OK and _require(["opencv-python"]):
-                    rtc_config = RTCConfiguration(
-                        {"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]}
-                    )
-
-                    def video_frame_callback(frame):
-                        _last["n"] += 1
-                        img_bgr = frame.to_ndarray(format="bgr24")
-
-                        if _last["n"] % FRAME_SKIP != 0:
-                            return img_bgr
-
-                        small = _resize_keep_aspect(img_bgr, INFER_W)
-                        small_rgb = cv2.cvtColor(small, cv2.COLOR_BGR2RGB)
-
-                        hands, drawing, mp_mod = _HANDS.get()
-                        if hands is None:
-                            return img_bgr
-
-                        res = hands.process(small_rgb)
-                        pred_text = "Show one clear hand"
-                        conf_text = ""
-                        if res and res.multi_hand_landmarks:
-                            lms = res.multi_hand_landmarks[0]
-                            handed = None
-                            if res.multi_handedness:
-                                handed = (
-                                    res.multi_handedness[0]
-                                    .classification[0]
-                                    .label
-                                )
-
-                            # Draw occasionally (cheaper)
-                            if ((_last["n"] // FRAME_SKIP) % 2) == 0:
-                                drawing.draw_landmarks(
-                                    small,
-                                    lms,
-                                    mp_mod.solutions.hands.HAND_CONNECTIONS,
-                                    drawing.DrawingSpec(
-                                        color=(0, 255, 255),
-                                        thickness=2,
-                                        circle_radius=2,
-                                    ),
-                                    drawing.DrawingSpec(
-                                        color=(255, 0, 255),
-                                        thickness=2,
-                                    ),
-                                )
-
-                            vec = vector_from_landmarks(lms, handed)
+                if st.button("🔍 Predict sign", use_container_width=True):
+                    if snap is None:
+                        st.error("Please take a snapshot first.")
+                    else:
+                        img = Image.open(snap)
+                        vec, _ = extract_hand_vector_snapshot(img)
+                        if vec is None:
+                            st.error(
+                                "We could not clearly detect a hand in this photo.\n\n"
+                                "Please try again:\n"
+                                "- Show **one hand** clearly inside the frame.\n"
+                                "- Keep the hand open in a fixed sign shape.\n"
+                                "- Use better lighting so the hand is visible."
+                            )
+                        else:
                             label, prob = predict_vector(vec)
-                            if label is not None:
+                            if label is None:
+                                st.warning(
+                                    "The model could not decide a label. "
+                                    "Please collect more training samples in **📸 Samples & Train**."
+                                )
+                            else:
                                 pred_text = label
                                 conf_text = f"{(prob or 0.0)*100:.1f}%"
+                                st.success(f"Predicted sign: **{pred_text}**  (confidence: {conf_text})")
 
-                        out = cv2.resize(
-                            small,
-                            (img_bgr.shape[1], img_bgr.shape[0]),
-                            interpolation=cv2.INTER_LINEAR,
-                        )
-                        cv2.rectangle(out, (10, 10), (420, 80), (0, 0, 0), -1)
-                        cv2.putText(
-                            out,
-                            f"Pred: {pred_text}",
-                            (20, 45),
-                            cv2.FONT_HERSHEY_SIMPLEX,
-                            0.9,
-                            (255, 255, 255),
-                            2,
-                        )
-                        if conf_text:
-                            cv2.putText(
-                                out,
-                                conf_text,
-                                (260, 45),
-                                cv2.FONT_HERSHEY_SIMPLEX,
-                                0.9,
-                                (0, 255, 0),
-                                2,
-                            )
-                        return out
-
-                    webrtc_streamer(
-                        key="signalink-live",
-                        mode=_webrtc_mode_any(),  # LIVE if available; else SENDRECV
-                        rtc_configuration=rtc_config,
-                        media_stream_constraints={
-                            "video": {
-                                "width": {"ideal": 320},
-                                "height": {"ideal": 240},
-                                "frameRate": {"ideal": 12, "max": 12},
-                            },
-                            "audio": False,
-                        },
-                        video_frame_callback=video_frame_callback,
-                        async_processing=True,
-                    )
-                else:
-                    st.info(
-                        "WebRTC is not available; live camera prediction is disabled on this server.",
-                        icon="ℹ️",
-                    )
+                if pred_text is None:
+                    st.info("After taking a snapshot, click **Predict sign** to see the result.")
 
     # SAMPLES & TRAIN
     with tab_samples:
@@ -910,18 +758,15 @@ else:
             "More real samples can be collected here to improve accuracy."
         )
 
-        # If mediapipe is not available (e.g., Python 3.13 on Streamlit Cloud),
-        # disable this feature with a clear message.
         if mp is None:
             st.info(
-                "Camera-based training is not available on this server environment "
-                "(mediapipe does not support this Python version yet). "
-                "Learn and Practice tabs are still available.",
+                "Camera-based training is not available in this environment. "
+                "Only the Learn / Practice tabs will work.",
                 icon="ℹ️",
             )
         elif not _require(["opencv-python", "scikit-learn"]):
             st.info(
-                "Install missing packages shown above, then reload.",
+                "Install the missing packages shown above, then reload the app.",
                 icon="ℹ️",
             )
         else:
@@ -930,27 +775,31 @@ else:
 
             st.markdown("**How many pictures are saved for each sign?**")
             if counts:
-                # Show as simple text, not raw JSON
                 lines = []
                 for label in sorted(counts.keys()):
                     lines.append(f"- **{label}** → {counts[label]} sample(s)")
                 st.markdown("\n".join(lines))
-                st.caption("Example: '**A → 3 samples**' means three training photos are saved for the sign A.")
+                st.caption(
+                    "Example: '**A → 3 samples**' means three training photos are saved for the sign A."
+                )
             else:
-                st.info("No samples saved yet. Choose a label and start capturing images.")
+                st.info("No samples saved yet. Choose a sign and start capturing images.")
 
             st.markdown("---")
 
-            label = st.selectbox("Choose a label to record", LABELS, index=0)
+            label = st.selectbox("Choose a sign label to record", LABELS, index=0)
             st.write("1) Capture an image. 2) Click **Add sample**.")
-            st.caption("Tip: Hold one hand clearly in front of the camera. Make sure the hand is not too dark or too bright.")
+            st.caption(
+                "Tip: Hold one hand clearly in front of the camera. "
+                "Make sure the hand is not too dark or too bright."
+            )
             snap = st.camera_input("Capture a hand image")
 
             c1, c2, c3 = st.columns(3)
             with c1:
                 add_ok = st.button("➕ Add sample to dataset")
             with c2:
-                clear_ok = st.button("🗑️ Clear all samples for this label")
+                clear_ok = st.button("🗑️ Clear all samples for this sign")
             with c3:
                 train_ok = st.button("🧠 Train / Retrain model")
 
@@ -995,7 +844,6 @@ else:
                         "(ideally 10 or more per sign) to train."
                     )
                 else:
-                    # Save for all visitors on this server (persistent while container is running)
                     if joblib is not None:
                         try:
                             PERSISTENT_MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -1010,27 +858,33 @@ else:
                                 f"but could not save persistent file: {e}"
                             )
                     else:
-                        # joblib not installed – still trained in memory for this session
                         st.success(
                             f"Model trained on signs: {', '.join(class_labels)}"
                         )
 
     # HELP
     with tab_help:
-        st.subheader("ℹ️ Help")
+        st.subheader("ℹ️ Help – How SIGNALINK works")
         st.markdown(
             """
-            **How this demo works**
+            **What happens inside this AI demo?**
 
-            - The app uses a camera frame to detect a hand using AI (MediaPipe Hands).  
-            - Each detected hand is converted into a **63-number feature vector** (21 landmarks × 3D coordinates).  
-            - These vectors are stored as samples for each sign (A, B, C, Hello, etc.).  
-            - A **K-Nearest Neighbors (KNN)** model learns from these samples and then predicts the closest sign in live mode.
+            1. The camera takes a picture of the hand.  
+            2. A library called **MediaPipe** finds 21 key points on the hand (finger tips, joints, etc.).  
+            3. These 21 points are converted into a **63-number vector** (x, y, z for each point), normalized so the hand size and position do not matter too much.  
+            4. A simple AI model called **K-Nearest Neighbours (KNN)** compares this vector to all saved training examples.  
+            5. The AI picks the sign label (A, B, C, Hello, etc.) that is closest to the new vector and shows the prediction.
 
-            **Workflow for better accuracy:**
+            **Why are more training pictures helpful?**
 
-            1. Open **📸 Samples & Train**, pick a sign (for example, "A"), capture 10–30 snapshots, and click **Train / Retrain model**.  
-            2. Repeat for other signs (B, C, Hello, Thank you, …) so the model sees different angles and lighting.  
-            3. Go to **✋ Live Translator**, show a single hand sign to the camera, and watch the predicted sign and confidence appear on the video.
+            - Different people show the same sign slightly differently.  
+            - More examples (10–30 photos per sign) teach the model to handle different hand shapes, camera angles, and lighting.  
+            - This makes the final prediction more stable and accurate.
+
+            **How to explain this in the science fair:**
+
+            - SIGNALINK is an **AI-based sign language helper**.  
+            - It uses **computer vision** to find the hand and **machine learning** (KNN) to guess the sign.  
+            - Students can **add their own samples** and retrain the model live during the demo.  
             """
         )
