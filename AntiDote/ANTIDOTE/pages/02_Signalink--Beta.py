@@ -357,6 +357,12 @@ def _img_to_rgb_ndarray(file_or_nd: Image.Image | np.ndarray) -> np.ndarray:
 
 
 class _HandsSingleton:
+    """
+    Reuse MediaPipe Hands across calls.
+    For our use case (snapshots), we use static_image_mode=True
+    so each photo is treated as a fresh image.
+    """
+
     def __init__(self):
         self.hands = None
         self.last_init = 0.0
@@ -364,16 +370,21 @@ class _HandsSingleton:
         self.mp = None
 
     def get(self):
+        # If mediapipe is not available in this environment, just disable hands.
         if mp is None:
             return None, None, None
+
+        # Re-create the Hands object every 10 minutes just to be safe
         if self.hands is None or (time.time() - self.last_init) > 600:
             import mediapipe as _mp
+
             self.mp = _mp
             self.hands = _mp.solutions.hands.Hands(
-                model_complexity=0,
+                static_image_mode=True,       # 🔴 important for single photos
+                model_complexity=1,
                 max_num_hands=1,
-                min_detection_confidence=0.6,
-                min_tracking_confidence=0.5,
+                min_detection_confidence=0.4,  # a bit less strict than 0.6
+                min_tracking_confidence=0.4,
             )
             self.drawing = _mp.solutions.drawing_utils
             self.last_init = time.time()
@@ -395,17 +406,35 @@ def vector_from_landmarks(landmarks, handed_label: Optional[str]) -> np.ndarray:
 
 
 def extract_hand_vector_snapshot(img: Image.Image | np.ndarray) -> Tuple[Optional[np.ndarray], Optional[str]]:
+    """
+    Take a single image (PIL or numpy), run MediaPipe Hands,
+    and return a 63-dimensional normalized vector if a hand is found.
+    """
     rgb = _img_to_rgb_ndarray(img)
+
+    # Ensure shape (H, W, 3)
+    if rgb.ndim == 2:
+        # grayscale -> fake 3-channel
+        rgb = np.stack([rgb] * 3, axis=-1)
+    if rgb.shape[-1] > 3:
+        rgb = rgb[:, :, :3]
+
     hands, _, mp_mod = _HANDS.get()
     if hands is None:
         return None, None
+
+    # MediaPipe expects RGB uint8
+    rgb = rgb.astype(np.uint8)
+
     res = hands.process(rgb)
     if not res.multi_hand_landmarks:
         return None, None
+
     lms = res.multi_hand_landmarks[0]
     handed: Optional[str] = None
     if res.multi_handedness:
         handed = res.multi_handedness[0].classification[0].label
+
     vec = vector_from_landmarks(lms, handed)
     return vec, handed
 
@@ -888,3 +917,4 @@ else:
             - Students can **add their own samples** and retrain the model live during the demo.  
             """
         )
+
