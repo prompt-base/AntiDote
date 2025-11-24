@@ -154,7 +154,7 @@ st.markdown(
     img { border-radius: 12px; }
 /* 🔹 Base style for all buttons (so text is not white on white) */
     .stButton > button {
-      color: #0b1220;             /* dark text */
+      color: #FFF;             /* dark text */
       font-weight: 600;
     }
     /* Reusable big CTA buttons */
@@ -599,4 +599,5 @@ else:
             > *compare patterns and pick the closest match based on numbers*.
             """
         )
+
 
