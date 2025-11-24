@@ -88,11 +88,11 @@ st.markdown("<br><div class='section-title'>👩‍💻 Team Members</div>", uns
 team = [
     {"name": "Anurag Mondal", "class": "8-C",
      "img": "https://raw.githubusercontent.com/prompt-base/AntiDote/main/AntiDote/ANTIDOTE/images/anurag.jpg"},
-    {"name": "Aarav", "class": "8-C",
+    {"name": "Aarav Shaw", "class": "8-C",
      "img": "https://raw.githubusercontent.com/prompt-base/AntiDote/main/AntiDote/ANTIDOTE/images/aarav.jpg"},
-    {"name": "Tejas", "class": "8-A",
+    {"name": "Tejas Singh", "class": "8-A",
      "img": "https://raw.githubusercontent.com/prompt-base/AntiDote/main/AntiDote/ANTIDOTE/images/tejash.jpg"},
-    {"name": "Sutikshna", "class": "8-A",
+    {"name": "Sutikshna Raj", "class": "8-C",
      "img": "https://raw.githubusercontent.com/prompt-base/AntiDote/main/AntiDote/ANTIDOTE/images/Sutikshna.jpg"},
 ]
 
@@ -127,4 +127,5 @@ st.markdown("""
     </p>
 </div>
 """, unsafe_allow_html=True)
+
 
