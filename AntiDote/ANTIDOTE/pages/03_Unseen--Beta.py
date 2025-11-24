@@ -21,7 +21,7 @@ def _rerun():
 PROJECT_DIR = Path(__file__).resolve().parent      # .../ANTIDOTE/pages
 REPO_ROOT = PROJECT_DIR.parent                     # .../ANTIDOTE
 IMAGES_DIR = REPO_ROOT / "images"
-HERO_GIF = IMAGES_DIR / "unseen-hero.gif"          # <-- put your GIF here
+HERO_GIF = IMAGES_DIR / "unseen-hero.gif"          # optional local GIF
 
 st.set_page_config(page_title="UNSEEN – Beta", page_icon="👁‍🗨", layout="wide")
 
@@ -129,13 +129,9 @@ if not st.session_state["unseen_started"]:
             _rerun()
 
     with c2:
-        # Use local GIF if available, else fallback to Pinterest URL
-        hero_src = (
-            str(HERO_GIF)
-            if HERO_GIF.exists()
-            else "https://i.pinimg.com/originals/e9/f7/bf/e9f7bf6cd7b5f1f6b954ed7be35d8aac.gif"
-        )
-        st.image(hero_src, use_container_width=True)
+        # Only show local GIF if it exists – no external fallback
+        if HERO_GIF.exists():
+            st.image(str(HERO_GIF), use_container_width=True)
 
     st.stop()
 
@@ -166,7 +162,6 @@ tab_daily, tab_talk, tab_reader, tab_nav, tab_about = st.tabs(
     ["🕓 Daily", "🗣 Smart Talk", "📖 Text / Label Reader", "🧭 Navigation", "ℹ About"]
 )
 
-# ---------------- DAILY ----------------
 # ---------------- DAILY ----------------
 with tab_daily:
     st.subheader("🕓 Voice-based Daily Routine")
@@ -404,5 +399,3 @@ with tab_about:
         Features: voice commands, daily reminders, text reader, navigation helper.
         """
     )
-
-
