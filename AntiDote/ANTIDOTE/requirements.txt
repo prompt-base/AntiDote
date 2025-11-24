@@ -5,6 +5,8 @@ streamlit-webrtc
 numpy>=1.23,<2.0
 pillow
 requests
+pytesseract
+pdfplumber
 
 opencv-python-headless
 scikit-learn>=1.2,<1.5
