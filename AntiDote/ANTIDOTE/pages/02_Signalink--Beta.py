@@ -1,8 +1,9 @@
 # ANTIDOTE/pages/Signalink--Beta.py
 # --------------------------------------------------
-# SIGNALINK – Learn signs + Snapshot Sign → Text (Template Matching)
+# SIGNALINK – Learn signs + Snapshot Sign → Text (Image Matching with Training)
 # --------------------------------------------------
 import os
+import json
 import random
 from pathlib import Path
 from typing import Dict, List, Tuple, Optional
@@ -20,6 +21,11 @@ REPO_ROOT = PROJECT_DIR.parent                     # .../ANTIDOTE
 # Images folder: ANTIDOTE/images/
 IMAGES_DIR = REPO_ROOT / "images"
 IMAGES_DIR.mkdir(parents=True, exist_ok=True)
+
+# Where we store training data (image vectors)
+SIGNALINK_ASSETS = REPO_ROOT / "signalink_assets"
+SIGNALINK_ASSETS.mkdir(parents=True, exist_ok=True)
+GESTURE_DB_PATH = SIGNALINK_ASSETS / "gesture_db_snapshot_img.json"
 
 st.set_page_config(page_title="Signalink", page_icon="🤟", layout="wide")
 
@@ -135,8 +141,8 @@ SIGN_DATA = [
 CATEGORIES = sorted(list({s["category"] for s in SIGN_DATA}))
 LABELS = [s["word"] for s in SIGN_DATA]
 
-# Alphabet templates to match against
-TEMPLATE_LABELS = ["A", "B", "C", "D", "E"]
+# For science fair demo, main AI labels: A–E
+CORE_LABELS = ["A", "B", "C", "D", "E"]
 
 # --------------------------------------------------
 # 3) GLOBAL STYLES
@@ -152,11 +158,7 @@ st.markdown(
     }
     h1,h2,h3,h4 { color: #fff !important; }
     img { border-radius: 12px; }
-/* 🔹 Base style for all buttons (so text is not white on white) */
-    .stButton > button {
-      color: #FFF;             /* dark text */
-      font-weight: 600;
-    }
+
     /* Reusable big CTA buttons */
     .cta .stButton>button {
       width: 100%;
@@ -248,68 +250,7 @@ st.session_state.setdefault("signalink_cat", "All")
 st.session_state.setdefault("learn_progress", {"learned": [], "quiz_scores": []})
 
 # --------------------------------------------------
-# 5) TEMPLATE-BASED MATCHING HELPERS
-# --------------------------------------------------
-def _preprocess_image_for_template(img: Image.Image, size: Tuple[int, int] = (128, 128)) -> np.ndarray:
-    """
-    Convert an image to a normalized grayscale vector for similarity comparison.
-    """
-    gray = img.convert("L")
-    resized = gray.resize(size)
-    arr = np.array(resized, dtype=np.float32) / 255.0
-    return arr.flatten()  # 128*128 vector
-
-
-@st.cache_resource(show_spinner=False)
-def load_template_vectors() -> Dict[str, np.ndarray]:
-    """
-    Load alphabet template images A–E and store their preprocessed vectors.
-    If a file is missing, that label is skipped.
-    """
-    template_vecs: Dict[str, np.ndarray] = {}
-    for label in TEMPLATE_LABELS:
-        path = IMAGES_DIR / f"alphabet_{label}.png"
-        if path.exists():
-            img = Image.open(path)
-            template_vecs[label] = _preprocess_image_for_template(img)
-    return template_vecs
-
-
-def find_best_match(
-    uploaded_img: Image.Image,
-    templates: Dict[str, np.ndarray],
-    threshold: float = 0.35,
-) -> Tuple[Optional[str], float]:
-    """
-    Compare the uploaded image with each template using mean squared error (MSE).
-    Lower MSE = more similar.
-
-    Returns:
-      (best_label, best_mse)
-      If best_mse is above threshold => treat as "no clear match".
-    """
-    if not templates:
-        return None, 9999.0
-
-    vec = _preprocess_image_for_template(uploaded_img)
-    best_label = None
-    best_mse = 9999.0
-
-    for label, tvec in templates.items():
-        mse = float(np.mean((vec - tvec) ** 2))
-        if mse < best_mse:
-            best_mse = mse
-            best_label = label
-
-    if best_mse > threshold:
-        return None, best_mse
-    return best_label, best_mse
-
-
-TEMPLATE_VECS = load_template_vectors()
-
-# --------------------------------------------------
-# 6) SMALL RERUN HELPER
+# 5) HELPERS – DB, IMAGE VECTORS, MATCHING, RERUN
 # --------------------------------------------------
 def _rerun():
     if hasattr(st, "rerun"):
@@ -317,8 +258,67 @@ def _rerun():
     else:
         st.experimental_rerun()
 
+
+def load_db() -> Dict[str, List[List[float]]]:
+    if GESTURE_DB_PATH.exists():
+        try:
+            with open(GESTURE_DB_PATH, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if isinstance(data, dict):
+                    return data
+        except Exception:
+            pass
+    return {}
+
+
+def save_db(db: Dict[str, List[List[float]]]) -> None:
+    with open(GESTURE_DB_PATH, "w", encoding="utf-8") as f:
+        json.dump(db, f, indent=2)
+
+
+def db_counts(db: Dict[str, List[List[float]]]) -> Dict[str, int]:
+    return {k: len(v) for k, v in db.items()}
+
+
+def preprocess_image(img: Image.Image, size: Tuple[int, int] = (128, 128)) -> np.ndarray:
+    """
+    Convert an image to a normalized grayscale vector for similarity comparison.
+    No hand detection, just pure image pattern.
+    """
+    gray = img.convert("L")
+    resized = gray.resize(size)
+    arr = np.array(resized, dtype=np.float32) / 255.0
+    return arr.flatten()  # 128*128 vector
+
+
+def find_best_match_vec(
+    vec: np.ndarray,
+    db: Dict[str, List[List[float]]],
+) -> Tuple[Optional[str], float]:
+    """
+    Compare the uploaded image vector with each stored training example.
+    Uses mean squared error (MSE). Lower MSE = closer match.
+    Returns (best_label, best_mse).
+    If db is empty, returns (None, large_number).
+    """
+    if not db:
+        return None, 9999.0
+
+    best_label = None
+    best_mse = 9999.0
+
+    for label, samples in db.items():
+        for s in samples:
+            v = np.array(s, dtype=np.float32)
+            mse = float(np.mean((vec - v) ** 2))
+            if mse < best_mse:
+                best_mse = mse
+                best_label = label
+
+    return best_label, best_mse
+
 # --------------------------------------------------
-# 7) LANDING (two centered big buttons)
+# 6) LANDING (two centered big buttons)
 # --------------------------------------------------
 current_route = st.session_state.get("signalink_route", None)
 
@@ -359,7 +359,7 @@ if not st.session_state["signalink_started"] or current_route not in ("learn", "
 route = st.session_state.get("signalink_route", "learn")
 
 # --------------------------------------------------
-# 8) TITLE + BACK BUTTON
+# 7) TITLE + BACK BUTTON
 # --------------------------------------------------
 title_col, back_col = st.columns([5, 2])
 
@@ -374,7 +374,7 @@ with back_col:
         _rerun()
 
 # --------------------------------------------------
-# 9) LEARN ROUTE
+# 8) LEARN ROUTE
 # --------------------------------------------------
 if route == "learn":
     tab_learn, tab_practice, tab_progress = st.tabs(
@@ -519,85 +519,173 @@ if route == "learn":
                 st.write(f"{status} – {s['word']}")
 
 # --------------------------------------------------
-# 10) SNAPSHOT TRANSLATOR ROUTE (TEMPLATE MATCH)
+# 9) SNAPSHOT TRANSLATOR ROUTE (IMAGE MATCHING)
 # --------------------------------------------------
 else:
-    tab_snap, tab_help = st.tabs(
-        ["📷 Snapshot Sign → Text", "ℹ️ How this demo works"]
+    tab_snap, tab_train, tab_help = st.tabs(
+        ["📷 Snapshot Sign → Text", "📸 Samples & Train", "ℹ️ How this demo works"]
     )
 
     # ---- SNAPSHOT TAB ----
     with tab_snap:
-        st.subheader("📷 Snapshot Sign → Text (A–E)")
+        st.subheader("📷 Snapshot Sign → Text")
         st.caption(
-            "Show a hand sign for A, B, C, D, or E and take a photo. "
-            "The system compares it with saved templates and picks the closest match."
+            "Shows how AI compares your snapshot with previously saved training images "
+            "for signs like A, B, C, D, and E."
         )
 
         st.markdown(
             """
-            **Tips for better results:**
-            - Use a **plain background** if possible.
-            - Show **one hand** clearly in the frame.
-            - Try to copy the alphabet hand shapes shown in the **Learn Signs** tab.
+            **Tips for best results:**
+            - Use the **same background** and **same distance** as when you recorded training samples.  
+            - Show **one clear hand** while keeping the palm in a fixed sign shape.  
+            - Avoid moving the hand when pressing the capture button.
             """
         )
 
-        col_cam, col_uploaded = st.columns(2)
-        with col_cam:
+        db = load_db()
+        if not db:
+            st.info(
+                "No training samples found yet.\n\n"
+                "Go to **📸 Samples & Train**, record some examples for A, B, C, D, E, "
+                "then come back here.",
+                icon="ℹ️",
+            )
+        else:
             camera_img = st.camera_input("Take a photo of your hand sign")
 
-        with col_uploaded:
-            uploaded = st.file_uploader("Or upload a photo", type=["png", "jpg", "jpeg"])
+            img: Optional[Image.Image] = None
+            if camera_img is not None:
+                img = Image.open(camera_img)
 
-        img: Optional[Image.Image] = None
-        if camera_img is not None:
-            img = Image.open(camera_img)
-        elif uploaded is not None:
-            img = Image.open(uploaded)
+            if img is not None:
+                st.image(img, caption="Input image", use_container_width=True)
 
-        if img is not None:
-            st.image(img, caption="Input image", use_container_width=True)
-
-            if not TEMPLATE_VECS:
-                st.error(
-                    "Template images alphabet_A.png to alphabet_E.png are missing. "
-                    "Please add them to the images folder."
-                )
-            else:
                 if st.button("🔍 Predict Sign", use_container_width=True):
-                    label, mse = find_best_match(img, TEMPLATE_VECS)
+                    vec = preprocess_image(img)
+                    label, mse = find_best_match_vec(vec, db)
                     if label is None:
                         st.error(
-                            "We could not find a clear match to A–E.\n\n"
-                            "This demo uses simple image comparison, so it works best when:\n"
-                            "- The hand sign looks similar to the template images.\n"
-                            "- Lighting is good and background is simple."
+                            "Could not find a match. This usually happens if:\n"
+                            "- No training samples exist, or\n"
+                            "- The image is very different from training images."
                         )
                     else:
-                        st.success(f"Predicted sign: **{label}**")
-                        st.caption(f"(Lower error = closer match. This image error: {mse:.3f})")
+                        # Heuristic for 'confidence'
+                        # smaller MSE => more confident
+                        if mse < 0.01:
+                            conf_text = "High confidence"
+                        elif mse < 0.02:
+                            conf_text = "Medium confidence"
+                        else:
+                            conf_text = "Low confidence (image looks quite different)"
 
+                        st.success(f"Predicted sign: **{label}**")
+                        st.caption(f"Similarity score (MSE): {mse:.4f} – {conf_text}")
+            else:
+                st.info("Take a photo to start prediction.")
+
+    # ---- SAMPLES & TRAIN TAB ----
+    with tab_train:
+        st.subheader("📸 Samples & Train (Image-based)")
+        st.caption(
+            "Here the AI learns from example images. "
+            "Once trained, Snapshot Sign → Text uses these images to recognize signs."
+        )
+
+        db = load_db()
+        counts = db_counts(db)
+
+        st.markdown("**How many examples are saved per sign?**")
+        if counts:
+            lines = []
+            for label in sorted(counts.keys()):
+                lines.append(f"- **{label}** → {counts[label]} sample(s)")
+            st.markdown("\n".join(lines))
+            st.caption(
+                "Example: '**A → 5 samples**' means five training photos are saved for sign A."
+            )
         else:
-            st.info("Take a photo or upload a hand-sign image to start.")
+            st.info("No samples saved yet. Choose a sign label and start capturing images.")
+
+        st.markdown("---")
+
+        # For science fair, focus dropdown on A–E first, but allow others too
+        label = st.selectbox(
+            "Choose a sign label to record",
+            CORE_LABELS + [l for l in LABELS if l not in CORE_LABELS],
+            index=0,
+        )
+
+        st.write("1) Capture an image. 2) Click **Add sample to dataset**.")
+        st.caption(
+            "Tip: Keep your hand position, distance, and background similar each time. "
+            "This helps the AI compare patterns correctly."
+        )
+
+        snap = st.camera_input("Capture a training image for this sign")
+
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            add_ok = st.button("➕ Add sample to dataset")
+        with c2:
+            clear_ok = st.button("🗑️ Clear all samples for this label")
+        with c3:
+            clear_all_ok = st.button("⚠️ Clear ALL training data")
+
+        if add_ok:
+            if snap is None:
+                st.error("Please capture an image first.")
+            else:
+                img = Image.open(snap)
+                vec = preprocess_image(img)
+                db.setdefault(label, []).append(vec.tolist())
+                save_db(db)
+                st.success(
+                    f"Added 1 sample to **{label}**. "
+                    f"Now we have {len(db[label])} sample(s) for this sign."
+                )
+
+        if clear_ok:
+            if label in db and db[label]:
+                db[label] = []
+                save_db(db)
+                st.warning(f"Cleared all samples for **{label}**")
+            else:
+                st.info(f"No samples found for **{label}** to clear.")
+
+        if clear_all_ok:
+            db = {}
+            save_db(db)
+            st.warning("⚠️ Cleared ALL training samples for all signs.")
 
     # ---- HELP TAB ----
     with tab_help:
         st.subheader("ℹ️ How this demo works")
         st.markdown(
             """
-            This is a **simple AI-style demo** for the science fair:
+            This version of **SIGNA·LINK** uses a **simple AI-style image matching** idea:
 
-            1. The system stores template images for the letters **A, B, C, D, and E** in sign language.  
-            2. When a new photo is captured or uploaded, it is converted to a small grayscale grid of numbers.  
-            3. The same is done for each template image.  
-            4. The program calculates **how different** the new image is from each template (using a simple error score).  
-            5. The sign with the **smallest error** is chosen as the prediction.
+            ### Training (📸 Samples & Train)
+            1. You choose a sign label (A, B, C, D, E…).  
+            2. You capture images of your hand making that sign.  
+            3. Each image is converted to **128×128 grayscale** → a grid of numbers.  
+            4. These number grids are saved as examples for that sign.
 
-            It is not a full real-world sign language recognizer.  
-            But it clearly shows the **core AI idea**:  
-            > *compare patterns and pick the closest match based on numbers*.
+            ### Prediction (📷 Snapshot Sign → Text)
+            1. You capture a new hand sign photo.  
+            2. It is again converted into a 128×128 grayscale number grid.  
+            3. The program compares this grid with every saved training image using
+               **mean squared error (MSE)** — a way to measure how different two images are.  
+            4. The sign label whose image is **closest (smallest error)** is chosen as the prediction.
+
+            This clearly shows the core idea of AI pattern recognition:
+
+            > *Convert images to numbers → compare patterns → pick the closest match.*
+
+            For the science fair, you can explain:
+            - How the camera image becomes numbers.  
+            - How the computer compares these numeric patterns.  
+            - How the final English letter (A, B, C, D, E…) is decided.
             """
         )
-
-
