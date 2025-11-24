@@ -1,4 +1,4 @@
-# ANTIDOTE/pages/Unseen--Beta.py
+# ANTIDOTE/pages/03_Unseen--Beta.py
 # --------------------------------------------------
 # UNSEEN – Voice-Driven Assistant for Low Vision
 # --------------------------------------------------
@@ -10,13 +10,23 @@ from pathlib import Path
 import streamlit as st
 import streamlit.components.v1 as components
 
-# NEW: OCR + PDF libs
-import pytesseract
-from PIL import Image
-import pdfplumber
+# ---------- TRY IMPORTS FOR OCR + PDF ----------
+OCR_AVAILABLE = True
+PDF_AVAILABLE = True
 
-# If needed on Windows, uncomment and set Tesseract path:
-# pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+try:
+    import pytesseract
+    from PIL import Image
+except Exception:
+    pytesseract = None
+    Image = None
+    OCR_AVAILABLE = False
+
+try:
+    import pdfplumber
+except Exception:
+    pdfplumber = None
+    PDF_AVAILABLE = False
 
 
 # Small helper for rerun (new vs old Streamlit)
@@ -25,6 +35,7 @@ def _rerun():
         st.rerun()
     else:
         st.experimental_rerun()
+
 
 # ---------- PATHS (for local hero GIF) ----------
 PROJECT_DIR = Path(__file__).resolve().parent      # .../ANTIDOTE/pages
@@ -114,15 +125,22 @@ st.markdown(
 # ---------- OCR / PDF HELPERS ----------
 def extract_text_from_image(file):
     """Read text from an uploaded image using Tesseract OCR."""
-    # Streamlit UploadedFile is file-like; PIL can open it directly
+    if not OCR_AVAILABLE:
+        raise RuntimeError(
+            "OCR libraries (pytesseract / Pillow) are not installed on this server."
+        )
     image = Image.open(file)
     text = pytesseract.image_to_string(image)
     return text.strip()
 
+
 def extract_text_from_pdf(file):
     """Read text from an uploaded PDF using pdfplumber."""
+    if not PDF_AVAILABLE:
+        raise RuntimeError(
+            "PDF text library (pdfplumber) is not installed on this server."
+        )
     text_chunks = []
-    # Ensure file pointer at start
     file.seek(0)
     with pdfplumber.open(file) as pdf:
         for page in pdf.pages:
@@ -139,7 +157,6 @@ st.session_state.setdefault("unseen_tasks", [])
 
 # ---------- LANDING (Mode selection) ----------
 if not st.session_state["unseen_started"]:
-    # Simple title for landing
     st.markdown("<h1>👁‍🗨 UNSEEN – Voice Assistant</h1>", unsafe_allow_html=True)
     st.caption("Seeing beyond sight. Voice-first helper inside ANTIDOTE.")
 
@@ -159,7 +176,6 @@ if not st.session_state["unseen_started"]:
             _rerun()
 
     with c2:
-        # Only show local GIF if it exists – no external fallback
         if HERO_GIF.exists():
             st.image(str(HERO_GIF), use_container_width=True)
 
@@ -197,7 +213,6 @@ with tab_daily:
     st.subheader("🕓 Voice-based Daily Routine")
     st.caption("Say: 'add reminder take medicine at 9pm' (browser mic must be allowed).")
 
-    # Mic button + status rendered via components.html to avoid script showing as text
     components.html(
         """
         <div class="panel">
@@ -220,7 +235,6 @@ with tab_daily:
             const isLocal =
               (location.hostname === "localhost" || location.hostname === "127.0.0.1");
 
-            // Security: mic needs HTTPS or localhost
             if (!window.isSecureContext && !isLocal) {
               stat.innerText = "❌ Mic needs HTTPS or localhost.";
               return;
@@ -247,7 +261,6 @@ with tab_daily:
               const text = e.results[0][0].transcript;
               stat.innerText = "Heard: " + text;
 
-              // Try to send text back to Streamlit via query param
               try {
                 const u = new URL(window.location.href);
                 u.searchParams.set("cmd", text);
@@ -265,21 +278,17 @@ with tab_daily:
         height=120,
     )
 
-    # Read voice command from query param (if navigation succeeded)
     cmd = st.query_params.get("cmd")
     if isinstance(cmd, list):
         cmd = cmd[0]
 
-    # Text fallback (works even if mic fails)
     typed_cmd = st.text_input("Or type your command here")
     run_cmd = st.button("Run typed command", key="run_typed_cmd")
 
-    # Ensure reminders list exists
     if "unseen_tasks" not in st.session_state:
         st.session_state["unseen_tasks"] = []
 
     def process_unseen_cmd(command: str):
-        """Process any command string for the Daily tab."""
         if not command:
             return
         txt = command.lower()
@@ -296,11 +305,9 @@ with tab_daily:
         else:
             st.info(f"Heard command: {command}")
 
-    # 1) Process voice command (?cmd=...)
     if cmd:
         process_unseen_cmd(cmd)
 
-    # 2) Process typed command when button clicked
     if run_cmd and typed_cmd.strip():
         process_unseen_cmd(typed_cmd.strip())
 
@@ -329,7 +336,6 @@ with tab_talk:
             else:
                 ans = "I am UNSEEN, your voice helper inside ANTIDOTE."
             st.success(ans)
-            # speak via browser
             st.markdown(
                 f"""
                 <script>
@@ -350,11 +356,9 @@ with tab_reader:
     st.subheader("📖 Text / Label Reader")
     st.caption("Upload an image/PDF of a medicine label, or paste text, and UNSEEN will read it aloud.")
 
-    # UPDATED: allow PDF as well
     up = st.file_uploader("Upload image or PDF", type=["png", "jpg", "jpeg", "pdf"])
     txt = st.text_area("Or paste text to read")
 
-    # Optional preview
     if up is not None:
         file_name = up.name.lower()
         if file_name.endswith((".png", ".jpg", ".jpeg")):
@@ -362,11 +366,18 @@ with tab_reader:
         elif file_name.endswith(".pdf"):
             st.info(f"PDF uploaded: **{up.name}** (text will be extracted)")
 
+    if not OCR_AVAILABLE or not PDF_AVAILABLE:
+        st.warning(
+            "Server is missing some libraries:\n\n"
+            f"- OCR available: {OCR_AVAILABLE}\n"
+            f"- PDF text available: {PDF_AVAILABLE}\n\n"
+            "Add `pytesseract`, `pillow`, and `pdfplumber` to requirements.txt on git."
+        )
+
     if st.button("🔊 Read"):
         readout = ""
 
         if txt.strip():
-            # Priority: manually pasted text
             readout = txt.strip()
 
         elif up is not None:
