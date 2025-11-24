@@ -40,7 +40,8 @@ with col1:
     </div>
     """, unsafe_allow_html=True)
     if st.button("🧠 Open ALZY", use_container_width=True):
-        st.switch_page("pages/Alzy--Beta.py")
+        # 👉 Make sure the file name matches exactly
+        st.switch_page("pages/01_Alzy--Beta.py")
 
 with col2:
     st.markdown("""
@@ -52,7 +53,8 @@ with col2:
     </div>
     """, unsafe_allow_html=True)
     if st.button("📶 Open SIGNA·LINK", use_container_width=True):
-        st.switch_page("pages/Signalink--Beta.py")
+        # 👉 Use the actual file: 02_Signalink--Beta.py
+        st.switch_page("pages/02_Signalink--Beta.py")
 
 with col3:
     st.markdown("""
@@ -64,7 +66,8 @@ with col3:
     </div>
     """, unsafe_allow_html=True)
     if st.button("🦯 Open UNSEEN", use_container_width=True):
-        st.switch_page("pages/Unseen--Beta.py")
+        # 👉 Adjust if your filename is different
+        st.switch_page("pages/03_Unseen--Beta.py")
 
 # ===============================
 # ABOUT THE PROJECT
@@ -83,10 +86,14 @@ Each module addresses unique needs through AI-assisted communication, memory, an
 st.markdown("<br><div class='section-title'>👩‍💻 Team Members</div>", unsafe_allow_html=True)
 
 team = [
-    {"name": "Anurag Mondal", "class": "8-C", "img": "https://raw.githubusercontent.com/prompt-base/AntiDote/main/AntiDote/ANTIDOTE/images/anurag.jpg"},
-    {"name": "Aarav", "class": "8-C", "img": "https://raw.githubusercontent.com/prompt-base/AntiDote/main/AntiDote/ANTIDOTE/images/aarav.jpg"},
-    {"name": "Tejash", "class": "8-A", "img": "https://raw.githubusercontent.com/prompt-base/AntiDote/main/AntiDote/ANTIDOTE/images/tejash.jpg"},
-    {"name": "Priyanshu", "class": "8-A", "img": "https://raw.githubusercontent.com/prompt-base/AntiDote/main/AntiDote/ANTIDOTE/images/priyanshu.jpg"},
+    {"name": "Anurag Mondal", "class": "8-C",
+     "img": "https://raw.githubusercontent.com/prompt-base/AntiDote/main/AntiDote/ANTIDOTE/images/anurag.jpg"},
+    {"name": "Aarav", "class": "8-C",
+     "img": "https://raw.githubusercontent.com/prompt-base/AntiDote/main/AntiDote/ANTIDOTE/images/aarav.jpg"},
+    {"name": "Tejash", "class": "8-A",
+     "img": "https://raw.githubusercontent.com/prompt-base/AntiDote/main/AntiDote/ANTIDOTE/images/tejash.jpg"},
+    {"name": "Priyanshu", "class": "8-A",
+     "img": "https://raw.githubusercontent.com/prompt-base/AntiDote/main/AntiDote/ANTIDOTE/images/priyanshu.jpg"},
 ]
 
 cols = st.columns(4)
@@ -120,5 +127,3 @@ st.markdown("""
     </p>
 </div>
 """, unsafe_allow_html=True)
-
-
