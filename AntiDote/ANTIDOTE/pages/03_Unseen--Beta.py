@@ -372,26 +372,43 @@ with tab_reader:
 
        # Read button
     if st.button("🔊 Read text aloud", use_container_width=True):
-        readout = (st.session_state.get("unseen_pdf_text") or "").strip()
+        # Always sync from textarea to session state
+        current_text = st.session_state.get("unseen_pdf_text") or ""
+        readout = current_text.strip()
+
         if not readout:
             st.warning("There's no text to read. Please upload a PDF and extract text first.")
         else:
             st.success("Reading text…")
-            st.markdown(
-                f"""
-                <script>
-                (function(){{
-                  if (!window.speechSynthesis) return;
-                  const u = new SpeechSynthesisUtterance({json.dumps(readout)});
-                  u.lang = "en-US";
-                  u.rate = 1;
-                  window.speechSynthesis.speak(u);
-                }})();
-                </script>
-                """,
-                unsafe_allow_html=True,
-            )
 
+            # Use components.html so JS actually runs in the browser
+            components.html(
+                f"""
+                <html>
+                <body>
+                <script>
+                  (function() {{
+                    if (!window.speechSynthesis) {{
+                      console.log("speechSynthesis not supported");
+                      return;
+                    }}
+                    var text = {json.dumps(readout)};
+                    if (!text || !text.trim()) {{
+                      return;
+                    }}
+                    // Cancel any previous speech
+                    window.speechSynthesis.cancel();
+                    var u = new SpeechSynthesisUtterance(text);
+                    u.lang = "en-US";
+                    u.rate = 1.0;
+                    window.speechSynthesis.speak(u);
+                  }})();
+                </script>
+                </body>
+                </html>
+                """,
+                height=0,
+            )
 
 # ---------------- NAV ----------------
 with tab_nav:
@@ -444,4 +461,5 @@ with tab_about:
         Features: voice commands, daily reminders, PDF reader, navigation helper.
         """
     )
+
 
