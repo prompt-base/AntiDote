@@ -10,6 +10,15 @@ from pathlib import Path
 import streamlit as st
 import streamlit.components.v1 as components
 
+# NEW: OCR + PDF libs
+import pytesseract
+from PIL import Image
+import pdfplumber
+
+# If needed on Windows, uncomment and set Tesseract path:
+# pytesseract.pytesseract.tesseract_cmd = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+
+
 # Small helper for rerun (new vs old Streamlit)
 def _rerun():
     if hasattr(st, "rerun"):
@@ -101,6 +110,27 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
+
+# ---------- OCR / PDF HELPERS ----------
+def extract_text_from_image(file):
+    """Read text from an uploaded image using Tesseract OCR."""
+    # Streamlit UploadedFile is file-like; PIL can open it directly
+    image = Image.open(file)
+    text = pytesseract.image_to_string(image)
+    return text.strip()
+
+def extract_text_from_pdf(file):
+    """Read text from an uploaded PDF using pdfplumber."""
+    text_chunks = []
+    # Ensure file pointer at start
+    file.seek(0)
+    with pdfplumber.open(file) as pdf:
+        for page in pdf.pages:
+            page_text = page.extract_text() or ""
+            if page_text:
+                text_chunks.append(page_text)
+    return "\n\n".join(text_chunks).strip()
+
 
 # ---------- SESSION STATE ----------
 st.session_state.setdefault("unseen_started", False)
@@ -318,19 +348,43 @@ with tab_talk:
 # ---------------- READER ----------------
 with tab_reader:
     st.subheader("📖 Text / Label Reader")
-    st.caption("Upload an image of a medicine label, or paste text, and UNSEEN will read it aloud.")
+    st.caption("Upload an image/PDF of a medicine label, or paste text, and UNSEEN will read it aloud.")
 
-    up = st.file_uploader("Upload image (demo only)", type=["png", "jpg", "jpeg"])
-    txt = st.text_area("Paste text to read")
+    # UPDATED: allow PDF as well
+    up = st.file_uploader("Upload image or PDF", type=["png", "jpg", "jpeg", "pdf"])
+    txt = st.text_area("Or paste text to read")
+
+    # Optional preview
+    if up is not None:
+        file_name = up.name.lower()
+        if file_name.endswith((".png", ".jpg", ".jpeg")):
+            st.image(up, caption="Uploaded image", use_container_width=True)
+        elif file_name.endswith(".pdf"):
+            st.info(f"PDF uploaded: **{up.name}** (text will be extracted)")
 
     if st.button("🔊 Read"):
+        readout = ""
+
         if txt.strip():
+            # Priority: manually pasted text
             readout = txt.strip()
-        elif up:
-            # No real OCR yet – placeholder message
-            readout = "I see an uploaded image. (Add pytesseract here to read text.)"
+
+        elif up is not None:
+            file_name = up.name.lower()
+            try:
+                if file_name.endswith(".pdf"):
+                    readout = extract_text_from_pdf(up)
+                    if not readout:
+                        readout = "I couldn't extract any readable text from this PDF."
+                else:
+                    readout = extract_text_from_image(up)
+                    if not readout:
+                        readout = "I couldn't detect any text in this image."
+            except Exception as e:
+                readout = f"Error while reading file: {e}"
+
         else:
-            readout = "No text to read."
+            readout = "No text or file provided."
 
         st.success(readout)
         st.markdown(
@@ -399,4 +453,3 @@ with tab_about:
         Features: voice commands, daily reminders, text reader, navigation helper.
         """
     )
-
