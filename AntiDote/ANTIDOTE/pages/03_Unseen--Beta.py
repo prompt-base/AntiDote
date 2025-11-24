@@ -67,7 +67,7 @@ st.markdown(
 
     /* Button text color overrides (these selectors change with Streamlit versions) */
     .stButton.st-emotion-cache-8atqhb.e1mlolmg0 button p{
-      color:#0b1220;
+      color:#FFF;
     }
     .stButton.st-emotion-cache-8atqhb.e1mlolmg0 button:hover p{
       color:#ffffff;
@@ -399,3 +399,4 @@ with tab_about:
         Features: voice commands, daily reminders, text reader, navigation helper.
         """
     )
+
