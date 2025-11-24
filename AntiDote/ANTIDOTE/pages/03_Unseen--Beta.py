@@ -10,18 +10,8 @@ from pathlib import Path
 import streamlit as st
 import streamlit.components.v1 as components
 
-# ---------- TRY IMPORTS FOR OCR + PDF ----------
-OCR_AVAILABLE = True
+# ---------- PDF LIB ----------
 PDF_AVAILABLE = True
-
-try:
-    import pytesseract
-    from PIL import Image
-except Exception:
-    pytesseract = None
-    Image = None
-    OCR_AVAILABLE = False
-
 try:
     import pdfplumber
 except Exception:
@@ -122,33 +112,7 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
-# ---------- OCR / PDF HELPERS ----------
-def extract_text_from_image(file):
-    """Read text from an uploaded image using Tesseract OCR (if available)."""
-    if not OCR_AVAILABLE:
-        return "Image OCR is not available on this server (Python OCR libraries are missing)."
-
-    image = Image.open(file)
-
-    try:
-        text = pytesseract.image_to_string(image)
-    except Exception as e:
-        # Most common case: Tesseract binary not installed on the server
-        msg = str(e).lower()
-        if "tesseract is not installed" in msg or "tesseractnotfounderror" in msg:
-            return (
-                "Image OCR is not available on this server because the Tesseract engine "
-                "is not installed. PDF reading will still work."
-            )
-        # Any other unexpected error
-        return f"Image OCR error on this server: {e}"
-
-    text = (text or "").strip()
-    if not text:
-        return "I couldn't detect any text in this image."
-    return text
-
-
+# ---------- PDF HELPER ----------
 def extract_text_from_pdf(file):
     """Read text from an uploaded PDF using pdfplumber."""
     if not PDF_AVAILABLE:
@@ -169,6 +133,8 @@ def extract_text_from_pdf(file):
 st.session_state.setdefault("unseen_started", False)
 st.session_state.setdefault("unseen_mode", None)          # "voice" | "text"
 st.session_state.setdefault("unseen_tasks", [])
+st.session_state.setdefault("unseen_pdf_text", "")        # for Reader tab
+
 
 # ---------- LANDING (Mode selection) ----------
 if not st.session_state["unseen_started"]:
@@ -220,7 +186,7 @@ with back_col:
 
 # ---------- MAIN TABS ----------
 tab_daily, tab_talk, tab_reader, tab_nav, tab_about = st.tabs(
-    ["🕓 Daily", "🗣 Smart Talk", "📖 Text / Label Reader", "🧭 Navigation", "ℹ About"]
+    ["🕓 Daily", "🗓 Smart Talk", "📖 PDF Reader", "🧭 Navigation", "ℹ About"]
 )
 
 # ---------------- DAILY ----------------
@@ -335,7 +301,7 @@ with tab_daily:
 
 # ---------------- TALK ----------------
 with tab_talk:
-    st.subheader("🗣 Smart Talk")
+    st.subheader("🗓 Smart Talk")
     st.caption("Ask: time, date, hello, who are you...")
 
     user_text = st.text_input("Say / type something")
@@ -366,68 +332,65 @@ with tab_talk:
                 unsafe_allow_html=True,
             )
 
-# ---------------- READER ----------------
+# ---------------- PDF READER ----------------
 with tab_reader:
-    st.subheader("📖 Text / Label Reader")
-    st.caption("Upload an image/PDF of a medicine label, or paste text, and UNSEEN will read it aloud.")
+    st.subheader("📖 PDF Reader")
+    st.caption("Step 1: Upload PDF and click **Upload & Extract**. Step 2: Click **🔊 Read text aloud**.")
 
-    up = st.file_uploader("Upload image or PDF", type=["png", "jpg", "jpeg", "pdf"])
-    txt = st.text_area("Or paste text to read")
-
-    if up is not None:
-        file_name = up.name.lower()
-        if file_name.endswith((".png", ".jpg", ".jpeg")):
-            st.image(up, caption="Uploaded image", use_container_width=True)
-        elif file_name.endswith(".pdf"):
-            st.info(f"PDF uploaded: **{up.name}** (text will be extracted)")
-
-    if not OCR_AVAILABLE or not PDF_AVAILABLE:
-        st.warning(
-            "Server is missing some libraries:\n\n"
-            f"- OCR available: {OCR_AVAILABLE}\n"
-            f"- PDF text available: {PDF_AVAILABLE}\n\n"
-            "Add `pytesseract`, `pillow`, and `pdfplumber` to requirements.txt on git."
+    if not PDF_AVAILABLE:
+        st.error(
+            "PDF text library (`pdfplumber`) is not installed on this server.\n"
+            "Please add `pdfplumber` to `requirements.txt` in git."
         )
 
-    if st.button("🔊 Read"):
-        readout = ""
+    # PDF uploader (no images)
+    uploaded_pdf = st.file_uploader("Upload PDF file", type=["pdf"], key="unseen_pdf_uploader")
 
-        if txt.strip():
-            # Priority: manually pasted text
-            readout = txt.strip()
-
-        elif up is not None:
-            file_name = up.name.lower()
-
-            if file_name.endswith(".pdf"):
-                try:
-                    readout = extract_text_from_pdf(up)
-                    if not readout:
-                        readout = "I couldn't extract any readable text from this PDF."
-                except Exception:
-                    readout = "I couldn't read this PDF on the server."
-            else:
-                # Image branch – helper already handles “Tesseract not installed” etc.
-                readout = extract_text_from_image(up)
-
+    # Upload & extract button
+    if st.button("📂 Upload & Extract", use_container_width=True):
+        if uploaded_pdf is None:
+            st.warning("Please choose a PDF file first.")
+        elif not PDF_AVAILABLE:
+            st.error("PDF reading is not available on this server.")
         else:
-            readout = "No text or file provided."
+            try:
+                text = extract_text_from_pdf(uploaded_pdf)
+                if not text:
+                    st.info("No readable text found in this PDF.")
+                st.session_state["unseen_pdf_text"] = text or ""
+                st.success("✅ Text extracted from PDF.")
+                _rerun()
+            except Exception as e:
+                st.error(f"Error while reading PDF: {e}")
 
-        st.success(readout)
-        st.markdown(
-            f"""
-            <script>
-            (function(){{
-              if (!window.speechSynthesis) return;
-              const u = new SpeechSynthesisUtterance({json.dumps(readout)});
-              u.lang = "en-US";
-              u.rate = 1;
-              window.speechSynthesis.speak(u);
-            }})();
-            </script>
-            """,
-            unsafe_allow_html=True,
-        )
+    # Editable text area (holds extracted or manual text)
+    txt = st.text_area(
+        "Extracted / editable text",
+        key="unseen_pdf_text",
+        height=260,
+    )
+
+    # Read button
+    if st.button("🔊 Read text aloud", use_container_width=True):
+        readout = (st.session_state.get("unseen_pdf_text") or "").strip()
+        if not readout:
+            st.warning("There's no text to read. Please upload a PDF and extract text first.")
+        else:
+            st.success("Reading text…")
+            st.markdown(
+                f"""
+                <script>
+                (function(){{
+                  if (!window.speechSynthesis) return;
+                  const u = new SpeechSynthesisUtterance({json.dumps(readout)});
+                  u.lang = "en-US";
+                  u.rate = 1;
+                  window.speechSynthesis.speak(u);
+                }})();
+                </script>
+                """,
+                unsafe_allow_html=True,
+            )
 
 # ---------------- NAV ----------------
 with tab_nav:
@@ -477,7 +440,6 @@ with tab_about:
         """
         UNSEEN is the third module of the ANTIDOTE care toolkit.  
         It is designed for visually impaired / low-vision users and is fully voice-first.  
-        Features: voice commands, daily reminders, text reader, navigation helper.
+        Features: voice commands, daily reminders, PDF reader, navigation helper.
         """
     )
-
