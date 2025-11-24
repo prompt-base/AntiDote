@@ -124,14 +124,29 @@ st.markdown(
 
 # ---------- OCR / PDF HELPERS ----------
 def extract_text_from_image(file):
-    """Read text from an uploaded image using Tesseract OCR."""
+    """Read text from an uploaded image using Tesseract OCR (if available)."""
     if not OCR_AVAILABLE:
-        raise RuntimeError(
-            "OCR libraries (pytesseract / Pillow) are not installed on this server."
-        )
+        return "Image OCR is not available on this server (Python OCR libraries are missing)."
+
     image = Image.open(file)
-    text = pytesseract.image_to_string(image)
-    return text.strip()
+
+    try:
+        text = pytesseract.image_to_string(image)
+    except Exception as e:
+        # Most common case: Tesseract binary not installed on the server
+        msg = str(e).lower()
+        if "tesseract is not installed" in msg or "tesseractnotfounderror" in msg:
+            return (
+                "Image OCR is not available on this server because the Tesseract engine "
+                "is not installed. PDF reading will still work."
+            )
+        # Any other unexpected error
+        return f"Image OCR error on this server: {e}"
+
+    text = (text or "").strip()
+    if not text:
+        return "I couldn't detect any text in this image."
+    return text
 
 
 def extract_text_from_pdf(file):
@@ -378,21 +393,22 @@ with tab_reader:
         readout = ""
 
         if txt.strip():
+            # Priority: manually pasted text
             readout = txt.strip()
 
         elif up is not None:
             file_name = up.name.lower()
-            try:
-                if file_name.endswith(".pdf"):
+
+            if file_name.endswith(".pdf"):
+                try:
                     readout = extract_text_from_pdf(up)
                     if not readout:
                         readout = "I couldn't extract any readable text from this PDF."
-                else:
-                    readout = extract_text_from_image(up)
-                    if not readout:
-                        readout = "I couldn't detect any text in this image."
-            except Exception as e:
-                readout = f"Error while reading file: {e}"
+                except Exception:
+                    readout = "I couldn't read this PDF on the server."
+            else:
+                # Image branch – helper already handles “Tesseract not installed” etc.
+                readout = extract_text_from_image(up)
 
         else:
             readout = "No text or file provided."
@@ -464,3 +480,4 @@ with tab_about:
         Features: voice commands, daily reminders, text reader, navigation helper.
         """
     )
+
