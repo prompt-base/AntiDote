@@ -370,7 +370,7 @@ with tab_reader:
         height=260,
     )
 
-    # Read button
+       # Read button
     if st.button("🔊 Read text aloud", use_container_width=True):
         readout = (st.session_state.get("unseen_pdf_text") or "").strip()
         if not readout:
@@ -391,6 +391,7 @@ with tab_reader:
                 """,
                 unsafe_allow_html=True,
             )
+
 
 # ---------------- NAV ----------------
 with tab_nav:
@@ -443,3 +444,4 @@ with tab_about:
         Features: voice commands, daily reminders, PDF reader, navigation helper.
         """
     )
+
