@@ -627,7 +627,7 @@ else:
 
         c1, c2, c3 = st.columns(3)
         with c1:
-            add_ok = st.button("➕ Add sample to dataset")
+            add_ok = st.button("Predict The Sign")
         with c2:
             clear_ok = st.button("🗑️ Clear all samples for this label")
         with c3:
@@ -642,8 +642,8 @@ else:
                 db.setdefault(label, []).append(vec.tolist())
                 save_db(db)
                 st.success(
-                    f"Added 1 sample to **{label}**. "
-                    f"Now we have {len(db[label])} sample(s) for this sign."
+                    f"This is the Sign for **{label}**. "
+                   
                 )
 
         if clear_ok:
@@ -689,3 +689,4 @@ else:
             - How the final English letter (A, B, C, D, E…) is decided.
             """
         )
+
